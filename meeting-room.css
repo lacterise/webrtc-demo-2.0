@@ -45,24 +45,12 @@ body {
     font-weight: 600;
 }
 
-.meeting-id-display {
+.meeting-id-display, .host-ip-display {
     font-size: 14px;
     color: #94a3b8;
 }
 
-.meeting-id-display i {
-    margin-right: 5px;
-}
-
-.host-ip-display {
-    font-size: 14px;
-    color: #4ade80;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.host-ip-display i {
+.meeting-id-display i, .host-ip-display i {
     margin-right: 5px;
 }
 
@@ -536,6 +524,18 @@ body {
     background: #dc2626;
 }
 
+.control-btn.end-meeting-btn {
+    background: #ef4444;
+    padding: 0 20px;
+    width: auto;
+    border-radius: 25px;
+    font-weight: 600;
+}
+
+.control-btn.end-meeting-btn:hover {
+    background: #dc2626;
+}
+
 /* Toast Notifications */
 .toast-container {
     position: fixed;
@@ -721,7 +721,7 @@ body {
         font-size: 16px;
     }
     
-    .control-btn.leave-btn {
+    .control-btn.leave-btn, .control-btn.end-meeting-btn {
         padding: 0 15px;
         font-size: 14px;
     }

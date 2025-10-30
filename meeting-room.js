@@ -43,6 +43,7 @@ class VideoMeetingApp {
         this.videoBtn = document.getElementById('videoBtn');
         this.screenShareBtn = document.getElementById('screenShareBtn');
         this.leaveBtn = document.getElementById('leaveBtn');
+        this.endMeetingBtn = document.getElementById('endMeetingBtn');
         
         // Header buttons
         this.securityBtn = document.getElementById('securityBtn');
@@ -72,6 +73,7 @@ class VideoMeetingApp {
         this.videoBtn.addEventListener('click', () => this.toggleVideo());
         this.screenShareBtn.addEventListener('click', () => this.toggleScreenShare());
         this.leaveBtn.addEventListener('click', () => this.leaveMeeting());
+        this.endMeetingBtn.addEventListener('click', () => this.endMeeting());
         
         // Header events
         this.securityBtn.addEventListener('click', () => this.showPanel('security'));
@@ -111,11 +113,6 @@ class VideoMeetingApp {
             this.localVideo.srcObject = this.localStream;
             document.getElementById('localName').textContent = this.userName;
             
-            // Get host IP if host
-            if (this.isHost) {
-                await this.getHostIp();
-            }
-            
             // Initialize PeerJS
             this.peer = new Peer(this.isHost ? this.meetingId : undefined, {
                 debug: 2
@@ -127,12 +124,20 @@ class VideoMeetingApp {
                     this.showToast(`Meeting started! ID: ${this.meetingId}`, 'success');
                     // Show security button for host
                     this.securityBtn.style.display = 'flex';
-                    // Show host IP
-                    this.hostIpDisplay.classList.remove('hidden');
+                    // Show end meeting button for host
+                    this.endMeetingBtn.style.display = 'flex';
+                    // Hide leave button for host
+                    this.leaveBtn.style.display = 'none';
+                    // Get and display host IP
+                    this.getHostIp();
                 } else {
                     this.currentMeetingId.textContent = this.meetingId;
                     // Hide security button for participants
                     this.securityBtn.style.display = 'none';
+                    // Hide end meeting button for participants
+                    this.endMeetingBtn.style.display = 'none';
+                    // Show leave button for participants
+                    this.leaveBtn.style.display = 'flex';
                     // Request to join meeting
                     this.requestToJoin();
                 }
@@ -157,13 +162,14 @@ class VideoMeetingApp {
     
     async getHostIp() {
         try {
-            // Use a public API to get the IP address
             const response = await fetch('https://api.ipify.org?format=json');
             const data = await response.json();
             this.hostIp.textContent = data.ip;
+            this.hostIpDisplay.classList.remove('hidden');
         } catch (error) {
             console.error('Error getting IP address:', error);
             this.hostIp.textContent = 'Unknown';
+            this.hostIpDisplay.classList.remove('hidden');
         }
     }
     
@@ -367,6 +373,12 @@ class VideoMeetingApp {
                 } else if (data.action === 'kick') {
                     this.forceKick();
                 }
+                break;
+            case 'meeting-ended':
+                this.showToast('The host has ended the meeting', 'warning');
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
                 break;
             case 'audio-toggle':
                 this.updatePeerAudioStatus(peerId, data.muted);
@@ -837,7 +849,34 @@ class VideoMeetingApp {
                 this.localStream.getTracks().forEach(track => track.stop());
             }
             
-            // Redirect to index.html
+            // Redirect to index page
+            window.location.href = 'index.html';
+        }
+    }
+    
+    endMeeting() {
+        if (confirm('Are you sure you want to end the meeting for everyone?')) {
+            // Notify all participants that the meeting is ending
+            this.broadcastToPeers({
+                type: 'meeting-ended'
+            });
+            
+            // Close all peer connections
+            Object.values(this.peers).forEach(peer => {
+                peer.close();
+            });
+            
+            // Close peer
+            if (this.peer) {
+                this.peer.destroy();
+            }
+            
+            // Stop local stream
+            if (this.localStream) {
+                this.localStream.getTracks().forEach(track => track.stop());
+            }
+            
+            // Redirect to index page
             window.location.href = 'index.html';
         }
     }
