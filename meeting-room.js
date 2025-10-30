@@ -3,12 +3,15 @@ class VideoMeetingApp {
         this.peer = null;
         this.localStream = null;
         this.peers = {};
+        this.peersInfo = {}; // Store peer information
+        this.pendingRequests = {}; // Store pending join requests
         this.meetingId = null;
         this.isHost = false;
         this.userName = 'User';
         this.isMuted = false;
         this.isVideoOff = false;
         this.isScreenSharing = false;
+        this.currentRequest = null; // Current join request being processed
         
         this.initializeElements();
         this.bindEvents();
@@ -24,8 +27,11 @@ class VideoMeetingApp {
         this.participantCount = document.getElementById('participantCount');
         this.sidebar = document.getElementById('sidebar');
         this.participantsPanel = document.getElementById('participantsPanel');
+        this.securityPanel = document.getElementById('securityPanel');
         this.chatPanel = document.getElementById('chatPanel');
         this.participantsList = document.getElementById('participantsList');
+        this.participantsManagement = document.getElementById('participantsManagement');
+        this.waitingParticipants = document.getElementById('waitingParticipants');
         this.chatMessages = document.getElementById('chatMessages');
         this.chatInput = document.getElementById('chatInput');
         
@@ -33,22 +39,27 @@ class VideoMeetingApp {
         this.micBtn = document.getElementById('micBtn');
         this.videoBtn = document.getElementById('videoBtn');
         this.screenShareBtn = document.getElementById('screenShareBtn');
-        this.raiseHandBtn = document.getElementById('raiseHandBtn');
-        this.reactionBtn = document.getElementById('reactionBtn');
-        this.moreBtn = document.getElementById('moreBtn');
         this.leaveBtn = document.getElementById('leaveBtn');
         
         // Header buttons
+        this.securityBtn = document.getElementById('securityBtn');
         this.participantsBtn = document.getElementById('participantsBtn');
         this.chatBtn = document.getElementById('chatBtn');
-        this.securityBtn = document.getElementById('securityBtn');
-        this.recordBtn = document.getElementById('recordBtn');
         this.closeParticipants = document.getElementById('closeParticipants');
+        this.closeSecurity = document.getElementById('closeSecurity');
         this.closeChat = document.getElementById('closeChat');
         this.sendMessageBtn = document.getElementById('sendMessageBtn');
         
+        // Modal elements
+        this.joinRequestModal = document.getElementById('joinRequestModal');
+        this.waitingModal = document.getElementById('waitingModal');
+        this.requesterName = document.getElementById('requesterName');
+        this.requestMeetingId = document.getElementById('requestMeetingId');
+        this.acceptRequestBtn = document.getElementById('acceptRequestBtn');
+        this.declineRequestBtn = document.getElementById('declineRequestBtn');
+        this.cancelRequestBtn = document.getElementById('cancelRequestBtn');
+        
         // Other elements
-        this.reactionPicker = document.getElementById('reactionPicker');
         this.toastContainer = document.getElementById('toastContainer');
     }
     
@@ -57,14 +68,14 @@ class VideoMeetingApp {
         this.micBtn.addEventListener('click', () => this.toggleMic());
         this.videoBtn.addEventListener('click', () => this.toggleVideo());
         this.screenShareBtn.addEventListener('click', () => this.toggleScreenShare());
-        this.raiseHandBtn.addEventListener('click', () => this.raiseHand());
-        this.reactionBtn.addEventListener('click', () => this.toggleReactionPicker());
         this.leaveBtn.addEventListener('click', () => this.leaveMeeting());
         
         // Header events
+        this.securityBtn.addEventListener('click', () => this.showPanel('security'));
         this.participantsBtn.addEventListener('click', () => this.showPanel('participants'));
         this.chatBtn.addEventListener('click', () => this.showPanel('chat'));
         this.closeParticipants.addEventListener('click', () => this.hideSidebar());
+        this.closeSecurity.addEventListener('click', () => this.hideSidebar());
         this.closeChat.addEventListener('click', () => this.hideSidebar());
         
         // Chat events
@@ -73,20 +84,10 @@ class VideoMeetingApp {
             if (e.key === 'Enter') this.sendMessage();
         });
         
-        // Reaction events
-        document.querySelectorAll('.reaction-picker button').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.sendReaction(e.target.dataset.reaction);
-                this.toggleReactionPicker();
-            });
-        });
-        
-        // Click outside to close reaction picker
-        document.addEventListener('click', (e) => {
-            if (!this.reactionPicker.contains(e.target) && e.target !== this.reactionBtn) {
-                this.reactionPicker.classList.add('hidden');
-            }
-        });
+        // Modal events
+        this.acceptRequestBtn.addEventListener('click', () => this.acceptJoinRequest());
+        this.declineRequestBtn.addEventListener('click', () => this.declineJoinRequest());
+        this.cancelRequestBtn.addEventListener('click', () => this.cancelJoinRequest());
         
         // Get meeting ID from URL or generate new
         const urlParams = new URLSearchParams(window.location.search);
@@ -116,20 +117,25 @@ class VideoMeetingApp {
                 if (this.isHost) {
                     this.currentMeetingId.textContent = this.meetingId;
                     this.showToast(`Meeting started! ID: ${this.meetingId}`, 'success');
+                    // Show security button for host
+                    this.securityBtn.style.display = 'flex';
                 } else {
                     this.currentMeetingId.textContent = this.meetingId;
-                    this.connectToMeeting();
+                    // Hide security button for participants
+                    this.securityBtn.style.display = 'none';
+                    // Request to join meeting
+                    this.requestToJoin();
                 }
             });
             
             if (this.isHost) {
                 this.peer.on('connection', (conn) => {
-                    this.handlePeerConnection(conn);
-                });
-                
-                this.peer.on('call', (call) => {
-                    call.answer(this.localStream);
-                    this.handlePeerCall(call);
+                    // Don't automatically handle connections, wait for approval
+                    conn.on('data', (data) => {
+                        if (data.type === 'join-request') {
+                            this.handleJoinRequest(conn, data);
+                        }
+                    });
                 });
             }
             
@@ -137,6 +143,143 @@ class VideoMeetingApp {
             console.error('Error initializing meeting:', error);
             this.showToast('Unable to access camera/microphone', 'error');
         }
+    }
+    
+    requestToJoin() {
+        // Connect to host to send join request
+        const conn = this.peer.connect(this.meetingId);
+        
+        conn.on('open', () => {
+            // Send join request
+            conn.send({
+                type: 'join-request',
+                name: this.userName,
+                peerId: this.peer.id
+            });
+            
+            // Show waiting modal
+            this.waitingModal.classList.remove('hidden');
+            
+            // Handle response
+            conn.on('data', (data) => {
+                if (data.type === 'join-response') {
+                    if (data.approved) {
+                        this.waitingModal.classList.add('hidden');
+                        this.connectToMeeting();
+                    } else {
+                        this.waitingModal.classList.add('hidden');
+                        this.showToast('Your request to join was declined', 'error');
+                        setTimeout(() => {
+                            window.location.href = '/'; // Redirect to join page
+                        }, 2000);
+                    }
+                }
+            });
+        });
+    }
+    
+    handleJoinRequest(conn, data) {
+        // Store the connection and request data
+        this.pendingRequests[data.peerId] = {
+            conn: conn,
+            name: data.name,
+            peerId: data.peerId
+        };
+        
+        // Add to waiting list
+        this.addWaitingParticipant(data.peerId, data.name);
+        
+        // Show notification
+        this.showToast(`${data.name} is requesting to join the meeting`, 'warning');
+        
+        // If no current request, show modal
+        if (!this.currentRequest) {
+            this.showJoinRequestModal(data.peerId);
+        }
+    }
+    
+    showJoinRequestModal(peerId) {
+        const request = this.pendingRequests[peerId];
+        if (!request) return;
+        
+        this.currentRequest = peerId;
+        this.requesterName.textContent = request.name;
+        this.requestMeetingId.textContent = this.meetingId;
+        this.joinRequestModal.classList.remove('hidden');
+    }
+    
+    acceptJoinRequest() {
+        if (!this.currentRequest) return;
+        
+        const request = this.pendingRequests[this.currentRequest];
+        if (!request) return;
+        
+        // Send approval
+        request.conn.send({
+            type: 'join-response',
+            approved: true
+        });
+        
+        // Handle the connection
+        this.handlePeerConnection(request.conn);
+        
+        // Wait for the call
+        this.peer.on('call', (call) => {
+            if (call.peer === this.currentRequest) {
+                call.answer(this.localStream);
+                this.handlePeerCall(call);
+            }
+        });
+        
+        // Remove from waiting list
+        this.removeWaitingParticipant(this.currentRequest);
+        
+        // Clean up
+        delete this.pendingRequests[this.currentRequest];
+        this.joinRequestModal.classList.add('hidden');
+        
+        // Check for next pending request
+        const nextRequestId = Object.keys(this.pendingRequests)[0];
+        if (nextRequestId) {
+            this.showJoinRequestModal(nextRequestId);
+        } else {
+            this.currentRequest = null;
+        }
+        
+        this.showToast(`${request.name} has joined the meeting`, 'success');
+    }
+    
+    declineJoinRequest() {
+        if (!this.currentRequest) return;
+        
+        const request = this.pendingRequests[this.currentRequest];
+        if (!request) return;
+        
+        // Send rejection
+        request.conn.send({
+            type: 'join-response',
+            approved: false
+        });
+        
+        // Remove from waiting list
+        this.removeWaitingParticipant(this.currentRequest);
+        
+        // Clean up
+        delete this.pendingRequests[this.currentRequest];
+        this.joinRequestModal.classList.add('hidden');
+        
+        // Check for next pending request
+        const nextRequestId = Object.keys(this.pendingRequests)[0];
+        if (nextRequestId) {
+            this.showJoinRequestModal(nextRequestId);
+        } else {
+            this.currentRequest = null;
+        }
+    }
+    
+    cancelJoinRequest() {
+        this.waitingModal.classList.add('hidden');
+        window.location.href = '/'; // Redirect to join page
     }
     
     connectToMeeting() {
@@ -156,7 +299,8 @@ class VideoMeetingApp {
             // Send user info
             conn.send({
                 type: 'user-info',
-                name: this.userName
+                name: this.userName,
+                isHost: this.isHost
             });
             
             // Handle messages
@@ -183,16 +327,24 @@ class VideoMeetingApp {
     handlePeerData(data, peerId) {
         switch (data.type) {
             case 'user-info':
+                this.peersInfo[peerId] = {
+                    name: data.name,
+                    isHost: data.isHost
+                };
                 this.updateParticipantName(peerId, data.name);
+                if (this.isHost) {
+                    this.addParticipantToManagement(peerId, data.name);
+                }
                 break;
             case 'chat-message':
                 this.displayChatMessage(data.name, data.message, false);
                 break;
-            case 'reaction':
-                this.displayReaction(data.reaction);
-                break;
-            case 'raise-hand':
-                this.showToast(`${data.name} raised their hand`, 'info');
+            case 'host-action':
+                if (data.action === 'mute') {
+                    this.forceMute();
+                } else if (data.action === 'kick') {
+                    this.forceKick();
+                }
                 break;
             case 'audio-toggle':
                 this.updatePeerAudioStatus(peerId, data.muted);
@@ -218,7 +370,7 @@ class VideoMeetingApp {
         
         const name = document.createElement('span');
         name.className = 'participant-name';
-        name.textContent = `Participant ${peerId.slice(-4)}`;
+        name.textContent = this.peersInfo[peerId]?.name || `Participant ${peerId.slice(-4)}`;
         name.id = `name-${peerId}`;
         
         const controls = document.createElement('div');
@@ -263,10 +415,19 @@ class VideoMeetingApp {
             participantItem.remove();
         }
         
-        // Clean up peer connection
+        // Remove from management list (host only)
+        const managementItem = document.getElementById(`manage-${peerId}`);
+        if (managementItem) {
+            managementItem.remove();
+        }
+        
+        // Clean up peer connection and info
         if (this.peers[peerId]) {
             this.peers[peerId].close();
             delete this.peers[peerId];
+        }
+        if (this.peersInfo[peerId]) {
+            delete this.peersInfo[peerId];
         }
         
         this.updateParticipantCount();
@@ -330,6 +491,144 @@ class VideoMeetingApp {
         `;
         
         this.participantsList.appendChild(participantItem);
+    }
+    
+    addParticipantToManagement(peerId, name) {
+        const managementItem = document.createElement('div');
+        managementItem.className = 'management-item';
+        managementItem.id = `manage-${peerId}`;
+        
+        managementItem.innerHTML = `
+            <div class="participant-info">
+                <i class="fas fa-user"></i>
+                <span class="participant-name">${name}</span>
+            </div>
+            <div class="participant-actions">
+                <button class="action-btn mute-btn" onclick="app.muteParticipant('${peerId}')">
+                    <i class="fas fa-microphone-slash"></i> Mute
+                </button>
+                <button class="action-btn kick-btn" onclick="app.kickParticipant('${peerId}')">
+                    <i class="fas fa-user-times"></i> Kick
+                </button>
+            </div>
+        `;
+        
+        this.participantsManagement.appendChild(managementItem);
+    }
+    
+    addWaitingParticipant(peerId, name) {
+        const waitingItem = document.createElement('div');
+        waitingItem.className = 'waiting-item';
+        waitingItem.id = `waiting-${peerId}`;
+        
+        waitingItem.innerHTML = `
+            <div class="waiting-info">
+                <i class="fas fa-user-clock"></i>
+                <span>${name}</span>
+            </div>
+            <div class="waiting-actions">
+                <button class="btn-accept" onclick="app.acceptWaitingParticipant('${peerId}')">
+                    <i class="fas fa-check"></i>
+                </button>
+                <button class="btn-decline" onclick="app.declineWaitingParticipant('${peerId}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        this.waitingParticipants.appendChild(waitingItem);
+    }
+    
+    removeWaitingParticipant(peerId) {
+        const waitingItem = document.getElementById(`waiting-${peerId}`);
+        if (waitingItem) {
+            waitingItem.remove();
+        }
+    }
+    
+    acceptWaitingParticipant(peerId) {
+        if (this.currentRequest && this.currentRequest !== peerId) {
+            // If there's already a request being processed, just show this one
+            this.joinRequestModal.classList.add('hidden');
+            this.showJoinRequestModal(peerId);
+        } else {
+            this.currentRequest = peerId;
+            this.showJoinRequestModal(peerId);
+        }
+    }
+    
+    declineWaitingParticipant(peerId) {
+        const request = this.pendingRequests[peerId];
+        if (!request) return;
+        
+        // Send rejection
+        request.conn.send({
+            type: 'join-response',
+            approved: false
+        });
+        
+        // Remove from waiting list
+        this.removeWaitingParticipant(peerId);
+        
+        // Clean up
+        delete this.pendingRequests[peerId];
+        
+        // If this was the current request, close modal and check for next
+        if (this.currentRequest === peerId) {
+            this.joinRequestModal.classList.add('hidden');
+            const nextRequestId = Object.keys(this.pendingRequests)[0];
+            if (nextRequestId) {
+                this.showJoinRequestModal(nextRequestId);
+            } else {
+                this.currentRequest = null;
+            }
+        }
+    }
+    
+    muteParticipant(peerId) {
+        if (this.peers[peerId]) {
+            this.peers[peerId].send({
+                type: 'host-action',
+                action: 'mute'
+            });
+            this.showToast(`Muted ${this.peersInfo[peerId]?.name || 'participant'}`, 'warning');
+        }
+    }
+    
+    kickParticipant(peerId) {
+        if (confirm(`Are you sure you want to kick ${this.peersInfo[peerId]?.name || 'this participant'}?`)) {
+            if (this.peers[peerId]) {
+                this.peers[peerId].send({
+                    type: 'host-action',
+                    action: 'kick'
+                });
+                // Close connection
+                this.peers[peerId].close();
+                this.removePeer(peerId);
+                this.showToast(`Kicked ${this.peersInfo[peerId]?.name || 'participant'}`, 'warning');
+            }
+        }
+    }
+    
+    forceMute() {
+        if (this.localStream) {
+            const audioTrack = this.localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                audioTrack.enabled = false;
+                this.isMuted = true;
+                this.micBtn.classList.remove('active');
+                const indicator = document.getElementById('localMicIndicator');
+                indicator.style.display = 'block';
+                this.showToast('You have been muted by the host', 'warning');
+            }
+        }
+    }
+    
+    forceKick() {
+        this.showToast('You have been removed from the meeting', 'error');
+        setTimeout(() => {
+            window.location.href = '/'; // Redirect to join page
+        }, 2000);
     }
     
     updateParticipantCount() {
@@ -433,61 +732,21 @@ class VideoMeetingApp {
         this.showToast('Screen sharing stopped', 'info');
     }
     
-    raiseHand() {
-        this.raiseHandBtn.classList.toggle('active');
-        
-        // Notify others
-        this.broadcastToPeers({
-            type: 'raise-hand',
-            name: this.userName
-        });
-        
-        if (this.raiseHandBtn.classList.contains('active')) {
-            this.showToast('Hand raised', 'success');
-            setTimeout(() => {
-                this.raiseHandBtn.classList.remove('active');
-            }, 3000);
-        }
-    }
-    
-    toggleReactionPicker() {
-        this.reactionPicker.classList.toggle('hidden');
-    }
-    
-    sendReaction(reaction) {
-        // Display local reaction
-        this.displayReaction(reaction);
-        
-        // Send to peers
-        this.broadcastToPeers({
-            type: 'reaction',
-            reaction: reaction
-        });
-    }
-    
-    displayReaction(reaction) {
-        const reactionElement = document.createElement('div');
-        reactionElement.className = 'floating-reaction';
-        reactionElement.textContent = reaction;
-        reactionElement.style.left = Math.random() * window.innerWidth + 'px';
-        reactionElement.style.bottom = '100px';
-        
-        document.body.appendChild(reactionElement);
-        
-        setTimeout(() => {
-            reactionElement.remove();
-        }, 3000);
-    }
-    
     showPanel(panel) {
         this.sidebar.classList.remove('hidden');
         
+        // Hide all panels first
+        this.participantsPanel.classList.add('hidden');
+        this.securityPanel.classList.add('hidden');
+        this.chatPanel.classList.add('hidden');
+        
+        // Show selected panel
         if (panel === 'participants') {
             this.participantsPanel.classList.remove('hidden');
-            this.chatPanel.classList.add('hidden');
+        } else if (panel === 'security') {
+            this.securityPanel.classList.remove('hidden');
         } else if (panel === 'chat') {
             this.chatPanel.classList.remove('hidden');
-            this.participantsPanel.classList.add('hidden');
             document.getElementById('chatBadge').classList.add('hidden');
         }
     }
@@ -584,6 +843,7 @@ class VideoMeetingApp {
 }
 
 // Initialize the app when DOM is loaded
+let app;
 document.addEventListener('DOMContentLoaded', () => {
-    new VideoMeetingApp();
+    app = new VideoMeetingApp();
 });

@@ -31,9 +31,6 @@
                     <i class="fas fa-comment"></i>
                     <span class="badge hidden" id="chatBadge"></span>
                 </button>
-                <button id="recordBtn" class="header-btn" title="Record">
-                    <i class="fas fa-record-vinyl"></i>
-                </button>
             </div>
         </header>
 
@@ -81,6 +78,40 @@
                     </div>
                 </div>
 
+                <!-- Security Panel (Host Only) -->
+                <div class="panel hidden" id="securityPanel">
+                    <div class="panel-header">
+                        <h3>Security</h3>
+                        <button class="close-btn" id="closeSecurity">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="panel-content">
+                        <div class="security-controls">
+                            <h4>Manage Participants</h4>
+                            <div class="participants-management" id="participantsManagement">
+                                <!-- Host entry -->
+                                <div class="management-item host-item">
+                                    <div class="participant-info">
+                                        <i class="fas fa-crown"></i>
+                                        <span class="participant-name">You (Host)</span>
+                                    </div>
+                                    <div class="participant-actions">
+                                        <span class="host-badge">Host</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="waiting-list" id="waitingList">
+                            <h4>Waiting to Join</h4>
+                            <div id="waitingParticipants" class="waiting-participants">
+                                <!-- Waiting participants will be added here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Chat Panel -->
                 <div class="panel hidden" id="chatPanel">
                     <div class="panel-header">
@@ -117,18 +148,6 @@
             </div>
             
             <div class="control-group">
-                <button id="raiseHandBtn" class="control-btn" title="Raise Hand">
-                    <i class="fas fa-hand-paper"></i>
-                </button>
-                <button id="reactionBtn" class="control-btn" title="Reactions">
-                    <i class="fas fa-smile"></i>
-                </button>
-                <button id="moreBtn" class="control-btn" title="More">
-                    <i class="fas fa-ellipsis-h"></i>
-                </button>
-            </div>
-            
-            <div class="control-group">
                 <button id="leaveBtn" class="control-btn leave-btn" title="Leave Meeting">
                     <i class="fas fa-phone-slash"></i> Leave
                 </button>
@@ -139,14 +158,45 @@
     <!-- Toast Notifications -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <!-- Reaction Picker -->
-    <div id="reactionPicker" class="reaction-picker hidden">
-        <button data-reaction="👍">👍</button>
-        <button data-reaction="👏">👏</button>
-        <button data-reaction="❤️">❤️</button>
-        <button data-reaction="😂">😂</button>
-        <button data-reaction="😮">😮</button>
-        <button data-reaction="🎉">🎉</button>
+    <!-- Join Request Modal -->
+    <div id="joinRequestModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-clock"></i> Join Request</h3>
+            </div>
+            <div class="modal-body">
+                <p><span id="requesterName"></span> wants to join the meeting.</p>
+                <p>Meeting ID: <span id="requestMeetingId"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button id="acceptRequestBtn" class="btn-accept">
+                    <i class="fas fa-check"></i> Accept
+                </button>
+                <button id="declineRequestBtn" class="btn-decline">
+                    <i class="fas fa-times"></i> Decline
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Waiting for Approval Modal -->
+    <div id="waitingModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-hourglass-half"></i> Waiting for Approval</h3>
+            </div>
+            <div class="modal-body">
+                <p>Please wait for the host to admit you to the meeting.</p>
+                <div class="waiting-animation">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelRequestBtn" class="btn-cancel">
+                    <i class="fas fa-sign-out-alt"></i> Cancel Request
+                </button>
+            </div>
+        </div>
     </div>
 
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
