@@ -12,6 +12,7 @@ class VideoMeetingApp {
         this.isVideoOff = false;
         this.isScreenSharing = false;
         this.currentRequest = null; // Current join request being processed
+        this.hostIp = null; // Store host IP address
         
         this.initializeElements();
         this.bindEvents();
@@ -23,6 +24,8 @@ class VideoMeetingApp {
         this.meetingRoom = document.getElementById('meetingRoom');
         this.localVideo = document.getElementById('localVideo');
         this.currentMeetingId = document.getElementById('currentMeetingId');
+        this.hostIpDisplay = document.getElementById('hostIpDisplay');
+        this.hostIp = document.getElementById('hostIp');
         this.videoContainer = document.getElementById('videoContainer');
         this.participantCount = document.getElementById('participantCount');
         this.sidebar = document.getElementById('sidebar');
@@ -108,6 +111,11 @@ class VideoMeetingApp {
             this.localVideo.srcObject = this.localStream;
             document.getElementById('localName').textContent = this.userName;
             
+            // Get host IP if host
+            if (this.isHost) {
+                await this.getHostIp();
+            }
+            
             // Initialize PeerJS
             this.peer = new Peer(this.isHost ? this.meetingId : undefined, {
                 debug: 2
@@ -119,6 +127,8 @@ class VideoMeetingApp {
                     this.showToast(`Meeting started! ID: ${this.meetingId}`, 'success');
                     // Show security button for host
                     this.securityBtn.style.display = 'flex';
+                    // Show host IP
+                    this.hostIpDisplay.classList.remove('hidden');
                 } else {
                     this.currentMeetingId.textContent = this.meetingId;
                     // Hide security button for participants
@@ -142,6 +152,18 @@ class VideoMeetingApp {
         } catch (error) {
             console.error('Error initializing meeting:', error);
             this.showToast('Unable to access camera/microphone', 'error');
+        }
+    }
+    
+    async getHostIp() {
+        try {
+            // Use a public API to get the IP address
+            const response = await fetch('https://api.ipify.org?format=json');
+            const data = await response.json();
+            this.hostIp.textContent = data.ip;
+        } catch (error) {
+            console.error('Error getting IP address:', error);
+            this.hostIp.textContent = 'Unknown';
         }
     }
     
@@ -170,7 +192,7 @@ class VideoMeetingApp {
                         this.waitingModal.classList.add('hidden');
                         this.showToast('Your request to join was declined', 'error');
                         setTimeout(() => {
-                            window.location.href = '/'; // Redirect to join page
+                            window.location.href = 'index.html'; // Redirect to index page
                         }, 2000);
                     }
                 }
@@ -279,7 +301,7 @@ class VideoMeetingApp {
     
     cancelJoinRequest() {
         this.waitingModal.classList.add('hidden');
-        window.location.href = '/'; // Redirect to join page
+        window.location.href = 'index.html'; // Redirect to index page
     }
     
     connectToMeeting() {
@@ -627,7 +649,7 @@ class VideoMeetingApp {
     forceKick() {
         this.showToast('You have been removed from the meeting', 'error');
         setTimeout(() => {
-            window.location.href = '/'; // Redirect to join page
+            window.location.href = 'index.html'; // Redirect to index page
         }, 2000);
     }
     
@@ -815,8 +837,8 @@ class VideoMeetingApp {
                 this.localStream.getTracks().forEach(track => track.stop());
             }
             
-            // Redirect or close window
-            window.location.href = '/'; // Change this to your join page
+            // Redirect to index.html
+            window.location.href = 'index.html';
         }
     }
     
