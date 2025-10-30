@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Join a Meeting</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.0/peerjs.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <section class="client-page">
+      <h2>Join a Meeting</h2>
+
+      <div class="form-box">
+        <label for="host-ip">Host IP Address</label>
+        <input type="text" id="host-ip" placeholder="Enter Host IP Address (e.g., 192.168.1.100)" />
+
+        <label for="meeting-id">Meeting ID (PeerJS)</label>
+        <input type="text" id="meeting-id" placeholder="Enter PeerJS Meeting ID" />
+
+        <label for="username">Your Name</label>
+        <input type="text" id="username" placeholder="Enter your name" />
+
+        <label for="meeting-pass">Password</label>
+        <input type="password" id="meeting-pass" placeholder="Enter Password (if any)" />
+
+        <button class="btn btn-primary" onclick="joinMeeting()">
+          <i class="fas fa-video"></i> Join Meeting
+        </button>
+      </div>
+
+      <div class="nav-back">
+        <button class="btn" onclick="window.location.href='index.html'">
+          <i class="fas fa-arrow-left"></i> Back to Home
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    let peer;
+
+    function initializePeerJS() {
+      try {
+        if (typeof Peer === 'undefined') {
+          throw new Error('PeerJS library failed to load');
+        }
+
+        // Generate a random peer ID for this participant
+        const participantId = 'participant_' + Math.random().toString(36).substr(2, 9);
+        
+        // Initialize PeerJS
+        peer = new Peer(participantId, {
+          debug: 0,
+          config: {
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+          }
+        });
+
+        peer.on('open', function(id) {
+          console.log('Participant PeerJS connected with ID:', id);
+        });
+
+        peer.on('error', function(err) {
+          console.error('PeerJS error:', err);
+        });
+
+      } catch (error) {
+        console.error('Failed to initialize PeerJS:', error);
+      }
+    }
+
+    async function joinMeeting() {
+      const hostIP = document.getElementById('host-ip').value;
+      const meetingID = document.getElementById('meeting-id').value;
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('meeting-pass').value;
+
+      if (!hostIP || !meetingID || !username) {
+        alert('Please fill in all required fields (Host IP, Meeting ID, and Your Name)');
+        return;
+      }
+
+      // Show loading state
+      const joinBtn = document.querySelector('.btn-primary');
+      const originalText = joinBtn.innerHTML;
+      joinBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+      joinBtn.disabled = true;
+
+      try {
+        // Wait for PeerJS to initialize if it's not ready
+        if (!peer || peer.disconnected) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // Store user data in localStorage for the meeting room
+        const meetingData = {
+          hostIP: hostIP,
+          meetingID: meetingID,
+          username: username,
+          password: password,
+          isHost: false,
+          peerId: peer ? peer.id : null,
+          hostPeerId: meetingID // The meeting ID is the host's PeerJS ID
+        };
+
+        localStorage.setItem('meetingData', JSON.stringify(meetingData));
+
+        // Try to connect to the host using PeerJS
+        if (peer && !peer.destroyed) {
+          try {
+            const conn = peer.connect(meetingID, {
+              reliable: true
+            });
+
+            conn.on('open', function() {
+              console.log('Connected to host:', meetingID);
+              
+              // Send join message to host
+              conn.send({
+                type: 'join',
+                participantId: peer.id,
+                username: username,
+                message: `${username} has joined the meeting`
+              });
+
+              // Redirect to meeting room
+              setTimeout(() => {
+                window.location.href = 'meeting-room.html';
+              }, 500);
+            });
+
+            conn.on('error', function(err) {
+              console.error('Connection error:', err);
+              // Still redirect to meeting room (fallback)
+              setTimeout(() => {
+                window.location.href = 'meeting-room.html';
+              }, 500);
+            });
+
+            // Set timeout for connection attempt
+            setTimeout(() => {
+              if (conn.open) return;
+              console.log('Connection timeout, redirecting anyway...');
+              window.location.href = 'meeting-room.html';
+            }, 3000);
+
+          } catch (connError) {
+            console.error('Connection attempt failed:', connError);
+            // Redirect anyway (fallback)
+            window.location.href = 'meeting-room.html';
+          }
+        } else {
+          // PeerJS not available, redirect without connection
+          window.location.href = 'meeting-room.html';
+        }
+
+      } catch (error) {
+        console.error('Error joining meeting:', error);
+        joinBtn.innerHTML = originalText;
+        joinBtn.disabled = false;
+        alert('Error joining meeting. Please try again.');
+      }
+    }
+
+    // Auto-focus on first input
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('host-ip').focus();
+      initializePeerJS();
+    });
+
+    // Clean up PeerJS connection when leaving the page
+    window.addEventListener('beforeunload', function() {
+      if (peer && !peer.destroyed) {
+        peer.destroy();
+      }
+    });
+  </script>
+</body>
+</html>

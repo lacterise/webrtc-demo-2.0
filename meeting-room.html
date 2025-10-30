@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Meeting Room</title>
+    <link rel="stylesheet" href="meeting-room.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Main Meeting Room -->
+    <div id="meetingRoom" class="meeting-room">
+        <!-- Header -->
+        <header class="meeting-header">
+            <div class="meeting-info">
+                <span class="meeting-title">Video Meeting</span>
+                <span class="meeting-id-display">
+                    <i class="fas fa-lock"></i>
+                    Meeting ID: <span id="currentMeetingId">Loading...</span>
+                </span>
+            </div>
+            <div class="header-actions">
+                <button id="securityBtn" class="header-btn" title="Security">
+                    <i class="fas fa-shield-alt"></i>
+                </button>
+                <button id="participantsBtn" class="header-btn" title="Participants">
+                    <i class="fas fa-users"></i>
+                    <span class="badge" id="participantCount">1</span>
+                </button>
+                <button id="chatBtn" class="header-btn" title="Chat">
+                    <i class="fas fa-comment"></i>
+                    <span class="badge hidden" id="chatBadge"></span>
+                </button>
+                <button id="recordBtn" class="header-btn" title="Record">
+                    <i class="fas fa-record-vinyl"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="meeting-main">
+            <!-- Video Grid -->
+            <div class="video-container" id="videoContainer">
+                <div class="video-wrapper main-video" id="localVideoWrapper">
+                    <video id="localVideo" autoplay muted playsinline></video>
+                    <div class="video-overlay">
+                        <span class="participant-name" id="localName">You</span>
+                        <div class="video-controls">
+                            <span class="mic-indicator hidden" id="localMicIndicator">
+                                <i class="fas fa-microphone-slash"></i>
+                            </span>
+                            <span class="video-indicator hidden" id="localVideoIndicator">
+                                <i class="fas fa-video-slash"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <aside class="sidebar hidden" id="sidebar">
+                <!-- Participants Panel -->
+                <div class="panel" id="participantsPanel">
+                    <div class="panel-header">
+                        <h3>Participants</h3>
+                        <button class="close-btn" id="closeParticipants">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="panel-content">
+                        <div class="participants-list" id="participantsList">
+                            <div class="participant-item">
+                                <i class="fas fa-user"></i>
+                                <span>You (Host)</span>
+                                <div class="participant-status">
+                                    <i class="fas fa-microphone"></i>
+                                    <i class="fas fa-video"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Panel -->
+                <div class="panel hidden" id="chatPanel">
+                    <div class="panel-header">
+                        <h3>Chat</h3>
+                        <button class="close-btn" id="closeChat">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="panel-content">
+                        <div class="chat-messages" id="chatMessages"></div>
+                        <div class="chat-input-container">
+                            <input type="text" id="chatInput" placeholder="Type a message...">
+                            <button id="sendMessageBtn">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Control Bar -->
+        <footer class="control-bar">
+            <div class="control-group">
+                <button id="micBtn" class="control-btn active" title="Mute/Unmute">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <button id="videoBtn" class="control-btn active" title="Start/Stop Video">
+                    <i class="fas fa-video"></i>
+                </button>
+                <button id="screenShareBtn" class="control-btn" title="Share Screen">
+                    <i class="fas fa-desktop"></i>
+                </button>
+            </div>
+            
+            <div class="control-group">
+                <button id="raiseHandBtn" class="control-btn" title="Raise Hand">
+                    <i class="fas fa-hand-paper"></i>
+                </button>
+                <button id="reactionBtn" class="control-btn" title="Reactions">
+                    <i class="fas fa-smile"></i>
+                </button>
+                <button id="moreBtn" class="control-btn" title="More">
+                    <i class="fas fa-ellipsis-h"></i>
+                </button>
+            </div>
+            
+            <div class="control-group">
+                <button id="leaveBtn" class="control-btn leave-btn" title="Leave Meeting">
+                    <i class="fas fa-phone-slash"></i> Leave
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Reaction Picker -->
+    <div id="reactionPicker" class="reaction-picker hidden">
+        <button data-reaction="👍">👍</button>
+        <button data-reaction="👏">👏</button>
+        <button data-reaction="❤️">❤️</button>
+        <button data-reaction="😂">😂</button>
+        <button data-reaction="😮">😮</button>
+        <button data-reaction="🎉">🎉</button>
+    </div>
+
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="meeting-room.js"></script>
+</body>
+</html>

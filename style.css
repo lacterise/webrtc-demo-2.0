@@ -1,0 +1,238 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.container {
+  text-align: center;
+}
+
+section {
+  margin: 40px 0;
+}
+
+h2 {
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.box, .form-box {
+  display: inline-block;
+  border: 3px solid #000;
+  padding: 30px 40px;
+  border-radius: 6px;
+  text-align: left;
+}
+
+.btn {
+  margin: 10px 0;
+  padding: 8px 16px;
+  border: 2px solid #000;
+  background-color: white;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  background-color: #f0f0f0;
+}
+
+label {
+  display: block;
+  margin: 10px 0 5px;
+  font-weight: bold;
+}
+
+input {
+  width: 100%;
+  padding: 6px;
+  font-size: 15px;
+  border: 2px solid #000;
+  border-radius: 4px;
+}
+
+/* ===== Schedule Page Styling ===== */
+.schedule-page {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 0 20px;
+  text-align: left;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+}
+
+.schedule-header {
+  margin-bottom: 20px;
+}
+
+.schedule-header h1 {
+  font-weight: 600;
+  font-size: 28px;
+  color: #2d2d2d;
+  text-align: center;
+}
+
+.schedule-form {
+  background-color: #fff;
+  padding: 25px 35px;
+  border-radius: 8px;
+  border: 3px solid #000; /* black border */
+  box-shadow: none;
+}
+
+.form-section {
+  margin-bottom: 20px;
+}
+
+.form-section label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.form-section input,
+.form-section select,
+.form-section textarea {
+  width: 100%;
+  padding: 10px;
+  font-size: 15px;
+  border: 2px solid #000;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.form-section textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.two-cols {
+  display: flex;
+  gap: 20px;
+}
+
+.two-cols > div {
+  flex: 1;
+}
+
+.form-buttons {
+  text-align: right;
+  margin-top: 30px;
+}
+
+.btn-primary {
+  background-color: #0e72ed;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: #0b5fcc;
+}
+
+.btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.btn-primary i {
+  font-size: 0.9rem;
+}
+
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.fa-spin {
+  animation: fa-spin 2s infinite linear;
+}
+
+@keyframes fa-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.btn-cancel {
+  background-color: #e0e0e0;
+  color: #000;
+  border: none;
+  padding: 10px 20px;
+  margin-right: 10px;
+  font-size: 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-cancel:hover {
+  background-color: #cfcfcf;
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 768px) {
+  .two-cols {
+    flex-direction: column;
+  }
+
+  .schedule-page {
+    margin: 20px;
+    padding: 0 10px;
+  }
+
+  .form-buttons {
+    text-align: center;
+  }
+
+  .btn-cancel,
+  .btn-primary {
+    width: 100%;
+    margin: 8px 0;
+  }
+}
+
+/* ===== Home / Host / Client Shared Styling ===== */
+
+.home-box, .host-page, .client-page {
+  max-width: 500px;
+  margin: 60px auto;
+  border: 3px solid #000;
+  border-radius: 8px;
+  padding: 30px 40px;
+  background-color: #fff;
+}
+
+.home-box h2, .host-page h2, .client-page h2 {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.home-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.nav-back {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.container h1 {
+  text-align: center;
+  font-size: 28px;
+  margin-top: 40px;
+}
