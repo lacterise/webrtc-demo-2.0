@@ -13,6 +13,7 @@ class VideoMeetingApp {
         this.isScreenSharing = false;
         this.currentRequest = null; // Current join request being processed
         this.hostIp = null; // Store host IP address
+        this.meetingData = null; // Store meeting data from localStorage
         
         this.initializeElements();
         this.bindEvents();
@@ -94,11 +95,37 @@ class VideoMeetingApp {
         this.declineRequestBtn.addEventListener('click', () => this.declineJoinRequest());
         this.cancelRequestBtn.addEventListener('click', () => this.cancelJoinRequest());
         
-        // Get meeting ID from URL or generate new
-        const urlParams = new URLSearchParams(window.location.search);
-        this.meetingId = urlParams.get('meetingId') || this.generateMeetingId();
-        this.isHost = !urlParams.has('meetingId');
-        this.userName = urlParams.get('userName') || (this.isHost ? 'Host' : 'Participant');
+        // Check for meeting data in localStorage
+        this.checkMeetingData();
+    }
+    
+    checkMeetingData() {
+        try {
+            const storedData = localStorage.getItem('meetingData');
+            if (storedData) {
+                this.meetingData = JSON.parse(storedData);
+                this.isHost = this.meetingData.isHost;
+                this.meetingId = this.meetingData.meetingID;
+                this.userName = this.meetingData.username || 'Host';
+                this.hostIp = this.meetingData.hostIP;
+                
+                // Clean up localStorage after retrieving data
+                localStorage.removeItem('meetingData');
+            } else {
+                // Fallback to URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                this.meetingId = urlParams.get('meetingId');
+                this.isHost = !urlParams.has('meetingId');
+                this.userName = urlParams.get('userName') || (this.isHost ? 'Host' : 'Participant');
+            }
+        } catch (error) {
+            console.error('Error parsing meeting data:', error);
+            // Fallback to URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            this.meetingId = urlParams.get('meetingId');
+            this.isHost = !urlParams.has('meetingId');
+            this.userName = urlParams.get('userName') || (this.isHost ? 'Host' : 'Participant');
+        }
     }
     
     async initializeMeeting() {
@@ -128,8 +155,14 @@ class VideoMeetingApp {
                     this.endMeetingBtn.style.display = 'flex';
                     // Hide leave button for host
                     this.leaveBtn.style.display = 'none';
-                    // Get and display host IP
-                    this.getHostIp();
+                    // Display host IP if available
+                    if (this.hostIp) {
+                        this.hostIp.textContent = this.hostIp;
+                        this.hostIpDisplay.classList.remove('hidden');
+                    } else {
+                        // Get and display host IP if not available
+                        this.getHostIp();
+                    }
                 } else {
                     this.currentMeetingId.textContent = this.meetingId;
                     // Hide security button for participants
@@ -162,14 +195,80 @@ class VideoMeetingApp {
     
     async getHostIp() {
         try {
+            // Method 1: Try to get local IP using WebRTC (from create.html)
+            const localIP = await this.getLocalIP();
+            if (localIP) {
+                this.hostIp.textContent = localIP;
+                this.hostIpDisplay.classList.remove('hidden');
+                return;
+            }
+        } catch (error) {
+            console.log('Could not get local IP:', error);
+        }
+
+        try {
+            // Method 2: Get public IP using external service (from create.html)
+            const publicIP = await this.getPublicIP();
+            if (publicIP) {
+                this.hostIp.textContent = publicIP;
+                this.hostIpDisplay.classList.remove('hidden');
+                return;
+            }
+        } catch (error) {
+            console.log('Could not get public IP:', error);
+        }
+
+        // Fallback: Display error
+        this.hostIp.textContent = "IP_DETECTION_FAILED";
+        this.hostIpDisplay.classList.remove('hidden');
+    }
+    
+    async getLocalIP() {
+        return new Promise((resolve) => {
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+
+            pc.createDataChannel('');
+            
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    const candidate = event.candidate.candidate;
+                    const ipMatch = candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/);
+                    if (ipMatch) {
+                        const ip = ipMatch[1];
+                        // Filter out non-local IPs
+                        if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+                            pc.close();
+                            resolve(ip);
+                        }
+                    }
+                }
+            };
+
+            pc.createOffer().then(offer => pc.setLocalDescription(offer));
+            
+            // Timeout after 5 seconds
+            setTimeout(() => {
+                pc.close();
+                resolve(null);
+            }, 5000);
+        });
+    }
+
+    async getPublicIP() {
+        try {
             const response = await fetch('https://api.ipify.org?format=json');
             const data = await response.json();
-            this.hostIp.textContent = data.ip;
-            this.hostIpDisplay.classList.remove('hidden');
+            return data.ip;
         } catch (error) {
-            console.error('Error getting IP address:', error);
-            this.hostIp.textContent = 'Unknown';
-            this.hostIpDisplay.classList.remove('hidden');
+            // Fallback to another service
+            try {
+                const response = await fetch('https://ipapi.co/ip/');
+                return await response.text();
+            } catch (error2) {
+                throw error2;
+            }
         }
     }
     
@@ -882,12 +981,8 @@ class VideoMeetingApp {
     }
     
     generateMeetingId() {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let id = '';
-        for (let i = 0; i < 10; i++) {
-            id += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return id;
+        // Use the same format as create.html
+        return 'meeting_' + Math.random().toString(36).substr(2, 9);
     }
     
     showToast(message, type = 'info') {
