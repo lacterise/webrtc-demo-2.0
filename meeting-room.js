@@ -175,18 +175,89 @@ class VideoMeetingApp {
     
     async getHostIp() {
         try {
-            // Get public IP using external service
+            // Method 1: Try to get local IP using WebRTC (same as in create.html)
+            const localIP = await this.getLocalIP();
+            if (localIP) {
+                this.hostIp = localIP;
+                this.hostIp.textContent = this.hostIp;
+                this.hostIpDisplay.classList.remove('hidden');
+                return;
+            }
+        } catch (error) {
+            console.log('Could not get local IP:', error);
+        }
+
+        try {
+            // Method 2: Get public IP using external service (same as in create.html)
+            const publicIP = await this.getPublicIP();
+            if (publicIP) {
+                this.hostIp = publicIP;
+                this.hostIp.textContent = this.hostIp;
+                this.hostIpDisplay.classList.remove('hidden');
+                return;
+            }
+        } catch (error) {
+            console.log('Could not get public IP:', error);
+        }
+
+        // Fallback: Return a placeholder
+        this.hostIp = "IP_DETECTION_FAILED";
+        this.hostIp.textContent = this.hostIp;
+        this.hostIpDisplay.classList.remove('hidden');
+    }
+    
+    async getLocalIP() {
+        return new Promise((resolve) => {
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+
+            pc.createDataChannel('');
+            
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    const candidate = event.candidate.candidate;
+                    const ipMatch = candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/);
+                    if (ipMatch) {
+                        const ip = ipMatch[1];
+                        // Filter out non-local IPs
+                        if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+                            pc.close();
+                            resolve(ip);
+                        }
+                    }
+                }
+            };
+
+            pc.createOffer().then(offer => pc.setLocalDescription(offer));
+            
+            // Timeout after 5 seconds
+            setTimeout(() => {
+                pc.close();
+                resolve(null);
+            }, 5000);
+        });
+    }
+
+    async getPublicIP() {
+        try {
             const response = await fetch('https://api.ipify.org?format=json');
             const data = await response.json();
-            this.hostIp = data.ip;
-            this.hostIp.textContent = this.hostIp;
-            this.hostIpDisplay.classList.remove('hidden');
+            return data.ip;
         } catch (error) {
-            console.error('Error getting IP address:', error);
-            this.hostIp = 'Unknown';
-            this.hostIp.textContent = this.hostIp;
-            this.hostIpDisplay.classList.remove('hidden');
+            // Fallback to another service
+            try {
+                const response = await fetch('https://ipapi.co/ip/');
+                return await response.text();
+            } catch (error2) {
+                throw error2;
+            }
         }
+    }
+    
+    generateMeetingId() {
+        // Generate meeting ID in the same format as create.html
+        return 'meeting_' + Math.random().toString(36).substr(2, 9);
     }
     
     async initializeMeeting() {
@@ -202,7 +273,13 @@ class VideoMeetingApp {
             
             // Initialize PeerJS
             this.peer = new Peer(this.isHost ? this.meetingId : undefined, {
-                debug: 2
+                debug: 2,
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                }
             });
             
             this.peer.on('open', (id) => {
@@ -946,15 +1023,6 @@ class VideoMeetingApp {
             // Redirect to index page
             window.location.href = 'index.html';
         }
-    }
-    
-    generateMeetingId() {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let id = '';
-        for (let i = 0; i < 10; i++) {
-            id += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return id;
     }
     
     showToast(message, type = 'info') {
