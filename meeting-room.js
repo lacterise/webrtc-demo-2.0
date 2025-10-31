@@ -17,6 +17,7 @@ class VideoMeetingApp {
         
         this.initializeElements();
         this.bindEvents();
+        this.loadMeetingData();
         this.initializeMeeting();
     }
     
@@ -94,35 +95,46 @@ class VideoMeetingApp {
         this.acceptRequestBtn.addEventListener('click', () => this.acceptJoinRequest());
         this.declineRequestBtn.addEventListener('click', () => this.declineJoinRequest());
         this.cancelRequestBtn.addEventListener('click', () => this.cancelJoinRequest());
-        
-        // Check for meeting data in localStorage
-        this.checkMeetingData();
     }
     
-    checkMeetingData() {
+    loadMeetingData() {
         try {
+            // Try to get meeting data from localStorage
             const storedData = localStorage.getItem('meetingData');
             if (storedData) {
                 this.meetingData = JSON.parse(storedData);
-                this.isHost = this.meetingData.isHost;
                 this.meetingId = this.meetingData.meetingID;
-                this.userName = this.meetingData.username || 'Host';
+                this.isHost = this.meetingData.isHost;
+                this.userName = this.meetingData.username;
                 this.hostIp = this.meetingData.hostIP;
                 
-                // Clean up localStorage after retrieving data
-                localStorage.removeItem('meetingData');
+                // Update UI with loaded data
+                this.currentMeetingId.textContent = this.meetingId;
+                document.getElementById('localName').textContent = this.userName;
+                
+                if (this.isHost) {
+                    this.hostIp.textContent = this.hostIp;
+                    this.hostIpDisplay.classList.remove('hidden');
+                    this.securityBtn.style.display = 'flex';
+                    this.endMeetingBtn.style.display = 'flex';
+                    this.leaveBtn.style.display = 'none';
+                } else {
+                    this.securityBtn.style.display = 'none';
+                    this.endMeetingBtn.style.display = 'none';
+                    this.leaveBtn.style.display = 'flex';
+                }
             } else {
-                // Fallback to URL parameters
+                // Fallback to URL parameters if no localStorage data
                 const urlParams = new URLSearchParams(window.location.search);
-                this.meetingId = urlParams.get('meetingId');
+                this.meetingId = urlParams.get('meetingId') || this.generateMeetingId();
                 this.isHost = !urlParams.has('meetingId');
                 this.userName = urlParams.get('userName') || (this.isHost ? 'Host' : 'Participant');
             }
         } catch (error) {
-            console.error('Error parsing meeting data:', error);
+            console.error('Error loading meeting data:', error);
             // Fallback to URL parameters
             const urlParams = new URLSearchParams(window.location.search);
-            this.meetingId = urlParams.get('meetingId');
+            this.meetingId = urlParams.get('meetingId') || this.generateMeetingId();
             this.isHost = !urlParams.has('meetingId');
             this.userName = urlParams.get('userName') || (this.isHost ? 'Host' : 'Participant');
         }
@@ -138,7 +150,6 @@ class VideoMeetingApp {
             
             // Set local video
             this.localVideo.srcObject = this.localStream;
-            document.getElementById('localName').textContent = this.userName;
             
             // Initialize PeerJS
             this.peer = new Peer(this.isHost ? this.meetingId : undefined, {
@@ -147,30 +158,8 @@ class VideoMeetingApp {
             
             this.peer.on('open', (id) => {
                 if (this.isHost) {
-                    this.currentMeetingId.textContent = this.meetingId;
                     this.showToast(`Meeting started! ID: ${this.meetingId}`, 'success');
-                    // Show security button for host
-                    this.securityBtn.style.display = 'flex';
-                    // Show end meeting button for host
-                    this.endMeetingBtn.style.display = 'flex';
-                    // Hide leave button for host
-                    this.leaveBtn.style.display = 'none';
-                    // Display host IP if available
-                    if (this.hostIp) {
-                        this.hostIp.textContent = this.hostIp;
-                        this.hostIpDisplay.classList.remove('hidden');
-                    } else {
-                        // Get and display host IP if not available
-                        this.getHostIp();
-                    }
                 } else {
-                    this.currentMeetingId.textContent = this.meetingId;
-                    // Hide security button for participants
-                    this.securityBtn.style.display = 'none';
-                    // Hide end meeting button for participants
-                    this.endMeetingBtn.style.display = 'none';
-                    // Show leave button for participants
-                    this.leaveBtn.style.display = 'flex';
                     // Request to join meeting
                     this.requestToJoin();
                 }
@@ -190,85 +179,6 @@ class VideoMeetingApp {
         } catch (error) {
             console.error('Error initializing meeting:', error);
             this.showToast('Unable to access camera/microphone', 'error');
-        }
-    }
-    
-    async getHostIp() {
-        try {
-            // Method 1: Try to get local IP using WebRTC (from create.html)
-            const localIP = await this.getLocalIP();
-            if (localIP) {
-                this.hostIp.textContent = localIP;
-                this.hostIpDisplay.classList.remove('hidden');
-                return;
-            }
-        } catch (error) {
-            console.log('Could not get local IP:', error);
-        }
-
-        try {
-            // Method 2: Get public IP using external service (from create.html)
-            const publicIP = await this.getPublicIP();
-            if (publicIP) {
-                this.hostIp.textContent = publicIP;
-                this.hostIpDisplay.classList.remove('hidden');
-                return;
-            }
-        } catch (error) {
-            console.log('Could not get public IP:', error);
-        }
-
-        // Fallback: Display error
-        this.hostIp.textContent = "IP_DETECTION_FAILED";
-        this.hostIpDisplay.classList.remove('hidden');
-    }
-    
-    async getLocalIP() {
-        return new Promise((resolve) => {
-            const pc = new RTCPeerConnection({
-                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-            });
-
-            pc.createDataChannel('');
-            
-            pc.onicecandidate = (event) => {
-                if (event.candidate) {
-                    const candidate = event.candidate.candidate;
-                    const ipMatch = candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/);
-                    if (ipMatch) {
-                        const ip = ipMatch[1];
-                        // Filter out non-local IPs
-                        if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
-                            pc.close();
-                            resolve(ip);
-                        }
-                    }
-                }
-            };
-
-            pc.createOffer().then(offer => pc.setLocalDescription(offer));
-            
-            // Timeout after 5 seconds
-            setTimeout(() => {
-                pc.close();
-                resolve(null);
-            }, 5000);
-        });
-    }
-
-    async getPublicIP() {
-        try {
-            const response = await fetch('https://api.ipify.org?format=json');
-            const data = await response.json();
-            return data.ip;
-        } catch (error) {
-            // Fallback to another service
-            try {
-                const response = await fetch('https://ipapi.co/ip/');
-                return await response.text();
-            } catch (error2) {
-                throw error2;
-            }
         }
     }
     
@@ -948,6 +858,11 @@ class VideoMeetingApp {
                 this.localStream.getTracks().forEach(track => track.stop());
             }
             
+            // Clear meeting data from localStorage if host
+            if (this.isHost) {
+                localStorage.removeItem('meetingData');
+            }
+            
             // Redirect to index page
             window.location.href = 'index.html';
         }
@@ -975,14 +890,21 @@ class VideoMeetingApp {
                 this.localStream.getTracks().forEach(track => track.stop());
             }
             
+            // Clear meeting data from localStorage
+            localStorage.removeItem('meetingData');
+            
             // Redirect to index page
             window.location.href = 'index.html';
         }
     }
     
     generateMeetingId() {
-        // Use the same format as create.html
-        return 'meeting_' + Math.random().toString(36).substr(2, 9);
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let id = '';
+        for (let i = 0; i < 10; i++) {
+            id += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return id;
     }
     
     showToast(message, type = 'info') {
