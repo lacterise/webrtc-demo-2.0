@@ -255,11 +255,6 @@ class VideoMeetingApp {
         }
     }
     
-    generateMeetingId() {
-        // Generate meeting ID in the same format as create.html
-        return 'meeting_' + Math.random().toString(36).substr(2, 9);
-    }
-    
     async initializeMeeting() {
         try {
             // Get user media
@@ -271,20 +266,13 @@ class VideoMeetingApp {
             // Set local video
             this.localVideo.srcObject = this.localStream;
             
-            // Initialize PeerJS
+            // Initialize PeerJS with the meeting ID from create.html
             this.peer = new Peer(this.isHost ? this.meetingId : undefined, {
-                debug: 2,
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' }
-                    ]
-                }
+                debug: 2
             });
             
             this.peer.on('open', (id) => {
                 if (this.isHost) {
-                    // Meeting started notification removed
                     console.log(`Meeting started with ID: ${this.meetingId}`);
                 } else {
                     // Request to join meeting
@@ -1023,6 +1011,11 @@ class VideoMeetingApp {
             // Redirect to index page
             window.location.href = 'index.html';
         }
+    }
+    
+    generateMeetingId() {
+        // Generate a meeting ID in the same format as create.html
+        return 'meeting_' + Math.random().toString(36).substr(2, 9);
     }
     
     showToast(message, type = 'info') {
