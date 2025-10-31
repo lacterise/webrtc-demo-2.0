@@ -106,18 +106,17 @@ class VideoMeetingApp {
                 this.meetingId = this.meetingData.meetingID;
                 this.isHost = this.meetingData.isHost;
                 this.userName = this.meetingData.username;
-                this.hostIp = this.meetingData.hostIP;
                 
                 // Update UI with loaded data
                 this.currentMeetingId.textContent = this.meetingId;
                 document.getElementById('localName').textContent = this.userName;
                 
                 if (this.isHost) {
-                    this.hostIp.textContent = this.hostIp;
-                    this.hostIpDisplay.classList.remove('hidden');
                     this.securityBtn.style.display = 'flex';
                     this.endMeetingBtn.style.display = 'flex';
                     this.leaveBtn.style.display = 'none';
+                    // Get and display host IP
+                    this.getHostIp();
                 } else {
                     this.securityBtn.style.display = 'none';
                     this.endMeetingBtn.style.display = 'none';
@@ -129,6 +128,22 @@ class VideoMeetingApp {
                 this.meetingId = urlParams.get('meetingId') || this.generateMeetingId();
                 this.isHost = !urlParams.has('meetingId');
                 this.userName = urlParams.get('userName') || (this.isHost ? 'Host' : 'Participant');
+                
+                // Update UI with fallback data
+                this.currentMeetingId.textContent = this.meetingId;
+                document.getElementById('localName').textContent = this.userName;
+                
+                if (this.isHost) {
+                    this.securityBtn.style.display = 'flex';
+                    this.endMeetingBtn.style.display = 'flex';
+                    this.leaveBtn.style.display = 'none';
+                    // Get and display host IP
+                    this.getHostIp();
+                } else {
+                    this.securityBtn.style.display = 'none';
+                    this.endMeetingBtn.style.display = 'none';
+                    this.leaveBtn.style.display = 'flex';
+                }
             }
         } catch (error) {
             console.error('Error loading meeting data:', error);
@@ -137,6 +152,101 @@ class VideoMeetingApp {
             this.meetingId = urlParams.get('meetingId') || this.generateMeetingId();
             this.isHost = !urlParams.has('meetingId');
             this.userName = urlParams.get('userName') || (this.isHost ? 'Host' : 'Participant');
+            
+            // Update UI with fallback data
+            this.currentMeetingId.textContent = this.meetingId;
+            document.getElementById('localName').textContent = this.userName;
+            
+            if (this.isHost) {
+                this.securityBtn.style.display = 'flex';
+                this.endMeetingBtn.style.display = 'flex';
+                this.leaveBtn.style.display = 'none';
+                // Get and display host IP
+                this.getHostIp();
+            } else {
+                this.securityBtn.style.display = 'none';
+                this.endMeetingBtn.style.display = 'none';
+                this.leaveBtn.style.display = 'flex';
+            }
+        }
+    }
+    
+    async getHostIp() {
+        try {
+            // Method 1: Try to get local IP using WebRTC
+            const localIP = await this.getLocalIP();
+            if (localIP) {
+                this.hostIp.textContent = localIP;
+                this.hostIpDisplay.classList.remove('hidden');
+                return;
+            }
+        } catch (error) {
+            console.log('Could not get local IP:', error);
+        }
+
+        try {
+            // Method 2: Get public IP using external service
+            const publicIP = await this.getPublicIP();
+            if (publicIP) {
+                this.hostIp.textContent = publicIP;
+                this.hostIpDisplay.classList.remove('hidden');
+                return;
+            }
+        } catch (error) {
+            console.log('Could not get public IP:', error);
+        }
+
+        // Fallback: Return a placeholder
+        this.hostIp.textContent = "IP_DETECTION_FAILED";
+        this.hostIpDisplay.classList.remove('hidden');
+    }
+
+    async getLocalIP() {
+        return new Promise((resolve) => {
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+
+            pc.createDataChannel('');
+            
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    const candidate = event.candidate.candidate;
+                    const ipMatch = candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/);
+                    if (ipMatch) {
+                        const ip = ipMatch[1];
+                        // Filter out non-local IPs
+                        if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+                            pc.close();
+                            resolve(ip);
+                        }
+                    }
+                }
+            };
+
+            pc.createOffer().then(offer => pc.setLocalDescription(offer));
+            
+            // Timeout after 5 seconds
+            setTimeout(() => {
+                pc.close();
+                resolve(null);
+            }, 5000);
+        });
+    }
+
+    async getPublicIP() {
+        try {
+            const response = await fetch('https://api.ipify.org?format=json');
+            const data = await response.json();
+            return data.ip;
+        } catch (error) {
+            // Fallback to another service
+            try {
+                const response = await fetch('https://ipapi.co/ip/');
+                return await response.text();
+            } catch (error2) {
+                throw error2;
+            }
         }
     }
     
@@ -158,7 +268,7 @@ class VideoMeetingApp {
             
             this.peer.on('open', (id) => {
                 if (this.isHost) {
-                    this.showToast(`Meeting started! ID: ${this.meetingId}`, 'success');
+                    // Meeting started notification removed
                 } else {
                     // Request to join meeting
                     this.requestToJoin();

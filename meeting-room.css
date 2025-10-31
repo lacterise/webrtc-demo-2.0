@@ -45,6 +45,12 @@ body {
     font-weight: 600;
 }
 
+.meeting-details {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
 .meeting-id-display, .host-ip-display {
     font-size: 14px;
     color: #94a3b8;
@@ -724,5 +730,11 @@ body {
     .control-btn.leave-btn, .control-btn.end-meeting-btn {
         padding: 0 15px;
         font-size: 14px;
+    }
+    
+    .meeting-details {
+        flex-direction: column;
+        gap: 5px;
+        align-items: flex-start;
     }
 }
