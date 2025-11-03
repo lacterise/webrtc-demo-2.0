@@ -4,60 +4,163 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Meeting Room</title>
-  <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="meeting-room.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.0/peerjs.min.js"></script>
 </head>
 <body>
-  <div class="mr-app">
-    <header class="mr-topbar">
-      <div class="mr-left">
-        <span class="mr-badge" id="mr-meeting-id">Meeting: -</span>
-        <span class="mr-badge" id="mr-host-ip">IP: -</span>
+  <!-- Header with meeting info -->
+  <header class="meeting-header">
+    <div class="meeting-info">
+      <div class="info-item">
+        <i class="fas fa-network-wired"></i>
+        <span id="ip-address">Detecting IP...</span>
       </div>
-      <div class="mr-center">
-        <span id="mr-title">Meeting Room</span>
+      <div class="info-item">
+        <i class="fas fa-id-badge"></i>
+        <span id="meeting-id">Loading...</span>
       </div>
-      <div class="mr-right">
-        <button class="mr-btn" id="mr-security-btn" title="Security"><i class="fas fa-shield-halved"></i></button>
-        <button class="mr-btn" id="mr-toggle-audio" title="Mute/Unmute"><i class="fas fa-microphone"></i></button>
-        <button class="mr-btn" id="mr-toggle-video" title="Start/Stop Video"><i class="fas fa-video"></i></button>
-        <button class="mr-btn danger" id="mr-leave" title="Leave"><i class="fas fa-phone-slash"></i></button>
-      </div>
-    </header>
+    </div>
+    <div class="header-actions">
+      <button id="security-btn" class="header-btn">
+        <i class="fas fa-shield-alt"></i> Security
+      </button>
+      <button id="participants-btn" class="header-btn">
+        <i class="fas fa-users"></i> Participants
+      </button>
+      <button id="leave-btn" class="header-btn leave">
+        <i class="fas fa-sign-out-alt"></i> Leave
+      </button>
+    </div>
+  </header>
 
-    <main class="mr-main">
-      <aside class="mr-security" id="mr-security-panel">
-        <div class="mr-security-header">
-          <h3>Security</h3>
-          <button class="mr-btn" id="mr-close-security" title="Close"><i class="fas fa-xmark"></i></button>
-        </div>
-        <div class="mr-section">
-          <h4>Waiting Room</h4>
-          <ul id="mr-waiting-list" class="mr-list"></ul>
-        </div>
-        <div class="mr-section">
-          <h4>Participants</h4>
-          <ul id="mr-participants-list" class="mr-list"></ul>
-        </div>
-      </aside>
-
-      <section class="mr-stage" id="mr-stage">
-        <div class="mr-grid" id="mr-video-grid">
-          <!-- Video tiles injected here -->
-        </div>
-        <div class="mr-waiting" id="mr-waiting" hidden>
-          <div class="mr-waiting-card">
-            <i class="fas fa-hourglass-half"></i>
-            <p>Waiting for host to admit you…</p>
+  <!-- Main content area -->
+  <main class="meeting-container">
+    <!-- Video grid -->
+    <section class="video-grid" id="video-grid">
+      <!-- Host video will be added here -->
+      <div class="video-container host-video" id="host-video-container">
+        <video id="host-video" autoplay muted playsinline></video>
+        <div class="video-info">
+          <span class="participant-name">You (Host)</span>
+          <div class="participant-status">
+            <i class="fas fa-microphone-slash muted-icon"></i>
+            <i class="fas fa-video-slash muted-icon"></i>
           </div>
         </div>
-      </section>
-    </main>
+      </div>
+    </section>
+
+    <!-- Control bar -->
+    <div class="control-bar">
+      <div class="control-group">
+        <button id="mic-btn" class="control-btn">
+          <i class="fas fa-microphone"></i>
+        </button>
+        <button id="video-btn" class="control-btn">
+          <i class="fas fa-video"></i>
+        </button>
+        <button id="screen-share-btn" class="control-btn">
+          <i class="fas fa-desktop"></i>
+        </button>
+      </div>
+      <div class="control-group">
+        <button id="record-btn" class="control-btn">
+          <i class="fas fa-record-vinyl"></i>
+        </button>
+        <button id="chat-btn" class="control-btn">
+          <i class="fas fa-comment"></i>
+        </button>
+        <button id="settings-btn" class="control-btn">
+          <i class="fas fa-cog"></i>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Side panels -->
+  <!-- Participants Panel -->
+  <aside class="side-panel participants-panel" id="participants-panel">
+    <div class="panel-header">
+      <h3>Participants</h3>
+      <button class="close-panel" data-panel="participants-panel">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="panel-content">
+      <div class="participants-list" id="participants-list">
+        <!-- Participants will be added here -->
+      </div>
+    </div>
+  </aside>
+
+  <!-- Security Panel (Host Only) -->
+  <aside class="side-panel security-panel" id="security-panel">
+    <div class="panel-header">
+      <h3>Security</h3>
+      <button class="close-panel" data-panel="security-panel">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="panel-content">
+      <div class="security-options">
+        <div class="security-option">
+          <h4>Waiting Room</h4>
+          <label class="switch">
+            <input type="checkbox" id="waiting-room-toggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="security-option">
+          <h4>Lock Meeting</h4>
+          <label class="switch">
+            <input type="checkbox" id="lock-meeting-toggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="participants-management">
+        <h4>Participants Management</h4>
+        <div class="participants-list" id="security-participants-list">
+          <!-- Participants with management options will be added here -->
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Authentication Modal (Host Only) -->
+  <div class="modal" id="auth-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Participant Waiting to Join</h3>
+      </div>
+      <div class="modal-body">
+        <div class="participant-info">
+          <div class="participant-avatar">
+            <i class="fas fa-user"></i>
+          </div>
+          <div class="participant-details">
+            <h4 id="waiting-name">John Doe</h4>
+            <p id="waiting-ip">IP: 192.168.1.100</p>
+          </div>
+        </div>
+        <p>Would you like to admit this participant to the meeting?</p>
+      </div>
+      <div class="modal-footer">
+        <button id="deny-entry" class="btn btn-danger">Deny Entry</button>
+        <button id="admit-entry" class="btn btn-primary">Admit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div class="toast" id="toast">
+    <div class="toast-content">
+      <i class="fas fa-info-circle"></i>
+      <span id="toast-message">Notification message</span>
+    </div>
   </div>
 
   <script src="meeting-room.js"></script>
 </body>
 </html>
-
