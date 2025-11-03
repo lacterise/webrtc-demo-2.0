@@ -9,136 +9,114 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.0/peerjs.min.js"></script>
 </head>
 <body>
-  <!-- Header with meeting info -->
+  <!-- Meeting Header -->
   <header class="meeting-header">
     <div class="meeting-info">
-      <span class="ip-address">IP: <span id="ip-address">Detecting...</span></span>
-      <span class="meeting-id">Meeting ID: <span id="meeting-id">Loading...</span></span>
+      <div class="ip-address" id="ip-address">IP: Detecting...</div>
+      <div class="meeting-id" id="meeting-id">Meeting ID: Loading...</div>
     </div>
-    <div class="meeting-time">
-      <span id="meeting-timer">00:00:00</span>
+    <div class="meeting-title">Video Meeting</div>
+    <div class="user-info">
+      <span id="user-name">Loading...</span>
+      <button class="btn-leave" id="leave-meeting">
+        <i class="fas fa-sign-out-alt"></i> Leave
+      </button>
     </div>
   </header>
 
-  <!-- Main content area -->
+  <!-- Main Content Area -->
   <main class="meeting-container">
-    <!-- Video area -->
-    <section class="video-container">
-      <div id="video-grid" class="video-grid">
-        <!-- Host video (always visible) -->
-        <div class="video-wrapper host-video" id="host-video-wrapper">
-          <video id="host-video" autoplay muted playsinline></video>
-          <div class="video-info">
-            <span class="participant-name">Host (You)</span>
-            <span class="participant-ip" id="host-ip-display"></span>
+    <!-- Video Grid -->
+    <section class="video-container" id="video-container">
+      <!-- Local Video -->
+      <div class="video-wrapper" id="local-video-wrapper">
+        <video id="local-video" autoplay muted playsinline></video>
+        <div class="video-label">
+          <span id="local-video-name">You</span>
+          <span class="mute-indicator" id="local-mute-indicator" style="display: none;">
+            <i class="fas fa-microphone-slash"></i>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Waiting Room Modal (Host Only) -->
+    <div class="modal" id="waiting-room-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Waiting Room</h3>
+          <button class="close-btn" id="close-waiting-room">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>Participants waiting to join:</p>
+          <ul id="waiting-participants-list"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Participant Modal (Host Only) -->
+    <div class="modal" id="participants-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Participants</h3>
+          <button class="close-btn" id="close-participants">&times;</button>
+        </div>
+        <div class="modal-body">
+          <ul id="participants-list"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Modal -->
+    <div class="modal" id="chat-modal">
+      <div class="modal-content chat-modal-content">
+        <div class="modal-header">
+          <h3>Chat</h3>
+          <button class="close-btn" id="close-chat">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="chat-messages" id="chat-messages"></div>
+          <div class="chat-input-container">
+            <input type="text" id="chat-input" placeholder="Type a message...">
+            <button id="send-message"><i class="fas fa-paper-plane"></i></button>
           </div>
         </div>
       </div>
-    </section>
-
-    <!-- Control panel -->
-    <section class="control-panel">
-      <div class="main-controls">
-        <button id="mic-btn" class="control-btn active">
-          <i class="fas fa-microphone"></i>
-        </button>
-        <button id="camera-btn" class="control-btn active">
-          <i class="fas fa-video"></i>
-        </button>
-        <button id="screen-share-btn" class="control-btn">
-          <i class="fas fa-desktop"></i>
-        </button>
-        <button id="chat-btn" class="control-btn">
-          <i class="fas fa-comment"></i>
-        </button>
-        <button id="participants-btn" class="control-btn">
-          <i class="fas fa-users"></i>
-        </button>
-        <button id="security-btn" class="control-btn host-only">
-          <i class="fas fa-shield-alt"></i>
-        </button>
-        <button id="leave-btn" class="control-btn leave">
-          <i class="fas fa-phone-slash"></i>
-        </button>
-      </div>
-    </section>
+    </div>
   </main>
 
-  <!-- Side panels -->
-  <aside class="side-panel chat-panel" id="chat-panel">
-    <div class="panel-header">
-      <h3>Chat</h3>
-      <button class="close-btn" id="close-chat-btn">
-        <i class="fas fa-times"></i>
+  <!-- Control Bar -->
+  <footer class="control-bar">
+    <div class="controls-left">
+      <button class="control-btn" id="mic-btn" title="Mute/Unmute">
+        <i class="fas fa-microphone"></i>
+      </button>
+      <button class="control-btn" id="video-btn" title="Start/Stop Video">
+        <i class="fas fa-video"></i>
+      </button>
+      <button class="control-btn" id="screen-share-btn" title="Share Screen">
+        <i class="fas fa-desktop"></i>
       </button>
     </div>
-    <div class="panel-content">
-      <div class="chat-messages" id="chat-messages">
-        <!-- Messages will be added here -->
-      </div>
-      <div class="chat-input-container">
-        <input type="text" id="chat-input" placeholder="Type a message...">
-        <button id="send-message-btn">
-          <i class="fas fa-paper-plane"></i>
-        </button>
-      </div>
-    </div>
-  </aside>
-
-  <aside class="side-panel participants-panel" id="participants-panel">
-    <div class="panel-header">
-      <h3>Participants</h3>
-      <button class="close-btn" id="close-participants-btn">
-        <i class="fas fa-times"></i>
+    
+    <div class="controls-center">
+      <button class="control-btn" id="security-btn" title="Security">
+        <i class="fas fa-shield-alt"></i>
+      </button>
+      <button class="control-btn" id="participants-btn" title="Participants">
+        <i class="fas fa-users"></i>
+      </button>
+      <button class="control-btn" id="chat-btn" title="Chat">
+        <i class="fas fa-comment"></i>
       </button>
     </div>
-    <div class="panel-content">
-      <div class="participants-list" id="participants-list">
-        <!-- Participants will be listed here -->
-      </div>
-    </div>
-  </aside>
-
-  <aside class="side-panel security-panel host-only" id="security-panel">
-    <div class="panel-header">
-      <h3>Security</h3>
-      <button class="close-btn" id="close-security-btn">
-        <i class="fas fa-times"></i>
+    
+    <div class="controls-right">
+      <button class="control-btn leave-btn" id="end-meeting-btn" title="End Meeting">
+        <i class="fas fa-phone-slash"></i> End
       </button>
     </div>
-    <div class="panel-content">
-      <div class="security-options">
-        <h4>Participant Management</h4>
-        <div class="participants-management" id="participants-management">
-          <!-- Participants with controls will be listed here -->
-        </div>
-      </div>
-    </div>
-  </aside>
-
-  <!-- Participant approval modal -->
-  <div class="modal" id="approval-modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Participant Request to Join</h3>
-      </div>
-      <div class="modal-body">
-        <p><span id="requester-name"></span> wants to join the meeting.</p>
-        <p class="requester-ip">IP Address: <span id="requester-ip"></span></p>
-      </div>
-      <div class="modal-footer">
-        <button id="approve-btn" class="btn btn-primary">Accept</button>
-        <button id="deny-btn" class="btn btn-secondary">Deny</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Notification toast -->
-  <div class="toast" id="toast">
-    <div class="toast-content">
-      <span id="toast-message"></span>
-    </div>
-  </div>
+  </footer>
 
   <script src="meeting-room.js"></script>
 </body>
