@@ -22,9 +22,6 @@
       </div>
     </div>
     <div class="header-actions">
-      <button id="security-btn" class="header-btn">
-        <i class="fas fa-shield-alt"></i> Security
-      </button>
       <button id="participants-btn" class="header-btn">
         <i class="fas fa-users"></i> Participants
       </button>
@@ -44,8 +41,8 @@
         <div class="video-info">
           <span class="participant-name">You (Host)</span>
           <div class="participant-status">
-            <i class="fas fa-microphone-slash muted-icon"></i>
-            <i class="fas fa-video-slash muted-icon"></i>
+            <i class="fas fa-microphone muted-icon"></i>
+            <i class="fas fa-video muted-icon"></i>
           </div>
         </div>
       </div>
@@ -56,9 +53,6 @@
       <div class="control-group">
         <button id="mic-btn" class="control-btn">
           <i class="fas fa-microphone"></i>
-        </button>
-        <button id="video-btn" class="control-btn">
-          <i class="fas fa-video"></i>
         </button>
         <button id="screen-share-btn" class="control-btn">
           <i class="fas fa-desktop"></i>
@@ -90,6 +84,27 @@
     <div class="panel-content">
       <div class="participants-list" id="participants-list">
         <!-- Participants will be added here -->
+      </div>
+    </div>
+  </aside>
+
+  <!-- Chat Panel -->
+  <aside class="side-panel chat-panel" id="chat-panel">
+    <div class="panel-header">
+      <h3>Chat</h3>
+      <button class="close-panel" data-panel="chat-panel">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="panel-content">
+      <div class="chat-messages" id="chat-messages">
+        <!-- Chat messages will be added here -->
+      </div>
+      <div class="chat-input-container">
+        <input type="text" id="chat-input" placeholder="Type a message..." />
+        <button id="send-message-btn" class="btn btn-primary">
+          <i class="fas fa-paper-plane"></i>
+        </button>
       </div>
     </div>
   </aside>

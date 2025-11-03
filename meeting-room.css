@@ -142,6 +142,11 @@ body {
   font-size: 14px;
 }
 
+.unmuted-icon {
+  color: var(--success-color);
+  font-size: 14px;
+}
+
 /* Control Bar */
 .control-bar {
   display: flex;
@@ -227,6 +232,8 @@ body {
   padding: 15px;
   overflow-y: auto;
   flex-grow: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Participants List */
@@ -287,6 +294,78 @@ body {
 .participant-action-btn.danger:hover {
   background-color: rgba(216, 59, 1, 0.2);
   color: var(--danger-color);
+}
+
+/* Chat Panel */
+.chat-messages {
+  flex-grow: 1;
+  overflow-y: auto;
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: var(--background-color);
+  border-radius: 6px;
+}
+
+.chat-message {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-message-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.chat-message-sender {
+  font-weight: 500;
+  color: var(--primary-color);
+}
+
+.chat-message-time {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.chat-message-content {
+  background-color: var(--surface-color);
+  padding: 8px 12px;
+  border-radius: 6px;
+  word-wrap: break-word;
+}
+
+.chat-message.own .chat-message-content {
+  background-color: var(--primary-color);
+  align-self: flex-end;
+}
+
+.chat-input-container {
+  display: flex;
+  gap: 10px;
+}
+
+.chat-input-container input {
+  flex-grow: 1;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+.chat-input-container button {
+  padding: 0 15px;
+  border-radius: 6px;
+  border: none;
+  background-color: var(--primary-color);
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.chat-input-container button:hover {
+  background-color: var(--secondary-color);
 }
 
 /* Security Options */

@@ -2,12 +2,14 @@ document.addEventListener('DOMContentLoaded', function() {
   // Global variables
   let peer;
   let localStream;
+  let screenStream;
   let meetingData;
   let participants = {};
   let isHost = false;
   let waitingRoomEnabled = true;
   let meetingLocked = false;
   let pendingParticipants = {};
+  let isScreenSharing = false;
   
   // DOM elements
   const ipAddressEl = document.getElementById('ip-address');
@@ -16,6 +18,10 @@ document.addEventListener('DOMContentLoaded', function() {
   const hostVideo = document.getElementById('host-video');
   const participantsPanel = document.getElementById('participants-panel');
   const securityPanel = document.getElementById('security-panel');
+  const chatPanel = document.getElementById('chat-panel');
+  const chatMessages = document.getElementById('chat-messages');
+  const chatInput = document.getElementById('chat-input');
+  const sendMessageBtn = document.getElementById('send-message-btn');
   const authModal = document.getElementById('auth-modal');
   const toast = document.getElementById('toast');
   
@@ -120,6 +126,9 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // Display local video
       hostVideo.srcObject = localStream;
+      
+      // Update mic button to show unmuted state
+      updateMicButton(true);
     } catch (error) {
       console.error('Error getting user media:', error);
       showToast('Failed to access camera and microphone');
@@ -130,7 +139,6 @@ document.addEventListener('DOMContentLoaded', function() {
   function setupEventListeners() {
     // Control buttons
     document.getElementById('mic-btn').addEventListener('click', toggleMicrophone);
-    document.getElementById('video-btn').addEventListener('click', toggleVideo);
     document.getElementById('screen-share-btn').addEventListener('click', toggleScreenShare);
     document.getElementById('leave-btn').addEventListener('click', leaveMeeting);
     
@@ -139,12 +147,8 @@ document.addEventListener('DOMContentLoaded', function() {
       togglePanel(participantsPanel);
     });
     
-    document.getElementById('security-btn').addEventListener('click', () => {
-      if (isHost) {
-        togglePanel(securityPanel);
-      } else {
-        showToast('Security options are only available to the host');
-      }
+    document.getElementById('chat-btn').addEventListener('click', () => {
+      togglePanel(chatPanel);
     });
     
     // Close panel buttons
@@ -153,6 +157,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const panelId = btn.getAttribute('data-panel');
         document.getElementById(panelId).classList.remove('active');
       });
+    });
+    
+    // Chat functionality
+    sendMessageBtn.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
     });
     
     // Security options
@@ -179,9 +191,6 @@ document.addEventListener('DOMContentLoaded', function() {
   // Update UI based on host status
   function updateHostUI() {
     if (!isHost) {
-      // Hide security button for participants
-      document.getElementById('security-btn').style.display = 'none';
-      
       // Update host video label
       document.querySelector('.host-video .participant-name').textContent = meetingData.username;
       
@@ -254,6 +263,9 @@ document.addEventListener('DOMContentLoaded', function() {
           // Auto-admit if waiting room is disabled
           admitParticipantById(conn.peer);
         }
+      } else if (data.type === 'chat-message') {
+        // Relay chat message to all participants
+        relayChatMessage(data);
       }
     });
   }
@@ -297,11 +309,23 @@ document.addEventListener('DOMContentLoaded', function() {
           showToast('You have been muted by the host');
         }
         break;
+      case 'unmute':
+        // Force unmute participant
+        if (localStream) {
+          localStream.getAudioTracks().forEach(track => track.enabled = true);
+          updateMicButton(true);
+          showToast('You have been unmuted by the host');
+        }
+        break;
       case 'kicked':
         showToast('You have been removed from the meeting');
         setTimeout(() => {
           window.location.href = 'index.html';
         }, 2000);
+        break;
+      case 'chat-message':
+        // Display chat message from host
+        displayChatMessage(data);
         break;
     }
   }
@@ -371,6 +395,30 @@ document.addEventListener('DOMContentLoaded', function() {
     delete pendingParticipants[participantId];
     
     showToast(`${username} has joined the meeting`);
+    
+    // Call the participant to establish media connection
+    callParticipant(participantId);
+  }
+  
+  // Call participant to establish media connection
+  function callParticipant(participantId) {
+    if (!isHost) return;
+    
+    try {
+      const call = peer.call(participantId, localStream);
+      
+      call.on('stream', function(remoteStream) {
+        // Add participant video to grid
+        addVideoToGrid(participantId, remoteStream, participants[participantId].username);
+      });
+      
+      call.on('close', function() {
+        // Remove participant video from grid
+        removeVideoFromGrid(participantId);
+      });
+    } catch (error) {
+      console.error('Error calling participant:', error);
+    }
   }
   
   // Deny participant
@@ -470,12 +518,14 @@ document.addEventListener('DOMContentLoaded', function() {
       const rightDiv = document.createElement('div');
       rightDiv.className = 'participant-item-right';
       
-      // Mute button
+      // Mute/Unmute button
       const muteBtn = document.createElement('button');
       muteBtn.className = 'participant-action-btn';
-      muteBtn.innerHTML = '<i class="fas fa-microphone-slash"></i>';
-      muteBtn.title = 'Mute';
-      muteBtn.addEventListener('click', () => muteParticipant(participant.id));
+      muteBtn.innerHTML = participant.muted ? 
+        '<i class="fas fa-microphone"></i>' : 
+        '<i class="fas fa-microphone-slash"></i>';
+      muteBtn.title = participant.muted ? 'Unmute' : 'Mute';
+      muteBtn.addEventListener('click', () => toggleParticipantMute(participant.id));
       
       // Kick button
       const kickBtn = document.createElement('button');
@@ -492,22 +542,25 @@ document.addEventListener('DOMContentLoaded', function() {
     return item;
   }
   
-  // Mute participant (host only)
-  function muteParticipant(participantId) {
+  // Toggle participant mute/unmute (host only)
+  function toggleParticipantMute(participantId) {
     if (!isHost) return;
     
     const participant = participants[participantId];
     if (!participant) return;
     
-    // Send mute command
+    // Toggle mute state
+    participant.muted = !participant.muted;
+    
+    // Send mute/unmute command
     participant.conn.send({
-      type: 'mute'
+      type: participant.muted ? 'mute' : 'unmute'
     });
     
-    // Update local state
-    participant.muted = true;
+    // Update UI
+    updateParticipantsList();
     
-    showToast(`${participant.username} has been muted`);
+    showToast(`${participant.username} has been ${participant.muted ? 'muted' : 'unmuted'}`);
   }
   
   // Kick participant (host only)
@@ -561,8 +614,8 @@ document.addEventListener('DOMContentLoaded', function() {
       const participantStatus = document.createElement('div');
       participantStatus.className = 'participant-status';
       participantStatus.innerHTML = `
-        <i class="fas fa-microphone-slash muted-icon"></i>
-        <i class="fas fa-video-slash muted-icon"></i>
+        <i class="fas fa-microphone muted-icon"></i>
+        <i class="fas fa-video muted-icon"></i>
       `;
       
       videoInfo.appendChild(participantName);
@@ -621,41 +674,155 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Toggle video
-  function toggleVideo() {
-    if (!localStream) return;
-    
-    const videoTracks = localStream.getVideoTracks();
-    if (videoTracks.length > 0) {
-      const enabled = !videoTracks[0].enabled;
-      videoTracks[0].enabled = enabled;
-      updateVideoButton(enabled);
-    }
-  }
-  
-  // Update video button
-  function updateVideoButton(enabled) {
-    const videoBtn = document.getElementById('video-btn');
-    const icon = videoBtn.querySelector('i');
-    
-    if (enabled) {
-      icon.className = 'fas fa-video';
-      videoBtn.classList.remove('active');
-    } else {
-      icon.className = 'fas fa-video-slash';
-      videoBtn.classList.add('active');
-    }
-  }
-  
   // Toggle screen share
-  function toggleScreenShare() {
-    // This is a placeholder for screen sharing functionality
-    showToast('Screen sharing is not yet implemented');
+  async function toggleScreenShare() {
+    if (!isScreenSharing) {
+      try {
+        // Start screen share
+        screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: true
+        });
+        
+        // Replace video track in local stream
+        const videoTrack = screenStream.getVideoTracks()[0];
+        const sender = peer && peer.connections && Object.values(peer.connections)[0] && 
+                      Object.values(peer.connections)[0][0] && 
+                      Object.values(peer.connections)[0][0].peerConnection && 
+                      Object.values(peer.connections)[0][0].peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+        
+        if (sender) {
+          sender.replaceTrack(videoTrack);
+        } else {
+          // If no sender found, just display locally
+          hostVideo.srcObject = screenStream;
+        }
+        
+        // Update button
+        document.getElementById('screen-share-btn').classList.add('active');
+        isScreenSharing = true;
+        
+        // Listen for screen share end
+        videoTrack.onended = () => {
+          stopScreenShare();
+        };
+        
+        showToast('Screen sharing started');
+      } catch (error) {
+        console.error('Error starting screen share:', error);
+        showToast('Failed to start screen sharing');
+      }
+    } else {
+      stopScreenShare();
+    }
+  }
+  
+  // Stop screen share
+  function stopScreenShare() {
+    if (screenStream) {
+      screenStream.getTracks().forEach(track => track.stop());
+      screenStream = null;
+    }
+    
+    // Restore local video
+    hostVideo.srcObject = localStream;
+    
+    // Update button
+    document.getElementById('screen-share-btn').classList.remove('active');
+    isScreenSharing = false;
+    
+    showToast('Screen sharing stopped');
+  }
+  
+  // Send chat message
+  function sendMessage() {
+    const message = chatInput.value.trim();
+    if (!message) return;
+    
+    const messageData = {
+      type: 'chat-message',
+      sender: meetingData.username,
+      senderId: peer.id,
+      content: message,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Display message locally
+    displayChatMessage(messageData, true);
+    
+    // Send to all participants
+    if (isHost) {
+      // Host sends to all participants
+      Object.values(participants).forEach(participant => {
+        participant.conn.send(messageData);
+      });
+    } else {
+      // Participant sends to host
+      const hostConn = Object.values(peer.connections)[0] && Object.values(peer.connections)[0][0];
+      if (hostConn) {
+        hostConn.send(messageData);
+      }
+    }
+    
+    // Clear input
+    chatInput.value = '';
+  }
+  
+  // Relay chat message to all participants (host only)
+  function relayChatMessage(messageData) {
+    if (!isHost) return;
+    
+    // Don't relay back to sender
+    Object.values(participants).forEach(participant => {
+      if (participant.id !== messageData.senderId) {
+        participant.conn.send(messageData);
+      }
+    });
+    
+    // Display message
+    displayChatMessage(messageData);
+  }
+  
+  // Display chat message
+  function displayChatMessage(messageData, isOwn = false) {
+    const messageElement = document.createElement('div');
+    messageElement.className = `chat-message ${isOwn ? 'own' : ''}`;
+    
+    const messageHeader = document.createElement('div');
+    messageHeader.className = 'chat-message-header';
+    
+    const messageSender = document.createElement('span');
+    messageSender.className = 'chat-message-sender';
+    messageSender.textContent = messageData.sender;
+    
+    const messageTime = document.createElement('span');
+    messageTime.className = 'chat-message-time';
+    messageTime.textContent = new Date(messageData.timestamp).toLocaleTimeString();
+    
+    messageHeader.appendChild(messageSender);
+    messageHeader.appendChild(messageTime);
+    
+    const messageContent = document.createElement('div');
+    messageContent.className = 'chat-message-content';
+    messageContent.textContent = messageData.content;
+    
+    messageElement.appendChild(messageHeader);
+    messageElement.appendChild(messageContent);
+    
+    chatMessages.appendChild(messageElement);
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
   }
   
   // Leave meeting
   function leaveMeeting() {
     if (confirm('Are you sure you want to leave the meeting?')) {
+      // Stop screen share if active
+      if (isScreenSharing) {
+        stopScreenShare();
+      }
+      
       // Close all connections
       if (peer && !peer.destroyed) {
         peer.destroy();
