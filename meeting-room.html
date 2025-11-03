@@ -1,212 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Meeting Room</title>
-    <link rel="stylesheet" href="meeting-room.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meeting Room</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="meeting-room.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.0/peerjs.min.js"></script>
 </head>
 <body>
-    <!-- Main Meeting Room -->
-    <div id="meetingRoom" class="meeting-room">
-        <!-- Header -->
-        <header class="meeting-header">
-            <div class="meeting-info">
-                <span class="meeting-title">Video Meeting</span>
-                <span class="meeting-id-display">
-                    <i class="fas fa-lock"></i>
-                    Meeting ID: <span id="currentMeetingId">Loading...</span>
-                </span>
-                <span class="host-ip-display hidden" id="hostIpDisplay">
-                    <i class="fas fa-network-wired"></i>
-                    IP: <span id="hostIp">Loading...</span>
-                </span>
-            </div>
-            <div class="header-actions">
-                <button id="securityBtn" class="header-btn" title="Security">
-                    <i class="fas fa-shield-alt"></i>
-                </button>
-                <button id="participantsBtn" class="header-btn" title="Participants">
-                    <i class="fas fa-users"></i>
-                    <span class="badge" id="participantCount">1</span>
-                </button>
-                <button id="chatBtn" class="header-btn" title="Chat">
-                    <i class="fas fa-comment"></i>
-                    <span class="badge hidden" id="chatBadge"></span>
-                </button>
-            </div>
-        </header>
+  <div class="mr-app">
+    <header class="mr-topbar">
+      <div class="mr-left">
+        <span class="mr-badge" id="mr-meeting-id">Meeting: -</span>
+        <span class="mr-badge" id="mr-host-ip">IP: -</span>
+      </div>
+      <div class="mr-center">
+        <span id="mr-title">Meeting Room</span>
+      </div>
+      <div class="mr-right">
+        <button class="mr-btn" id="mr-security-btn" title="Security"><i class="fas fa-shield-halved"></i></button>
+        <button class="mr-btn" id="mr-toggle-audio" title="Mute/Unmute"><i class="fas fa-microphone"></i></button>
+        <button class="mr-btn" id="mr-toggle-video" title="Start/Stop Video"><i class="fas fa-video"></i></button>
+        <button class="mr-btn danger" id="mr-leave" title="Leave"><i class="fas fa-phone-slash"></i></button>
+      </div>
+    </header>
 
-        <!-- Main Content Area -->
-        <main class="meeting-main">
-            <!-- Video Grid -->
-            <div class="video-container" id="videoContainer">
-                <div class="video-wrapper main-video" id="localVideoWrapper">
-                    <video id="localVideo" autoplay muted playsinline></video>
-                    <div class="video-overlay">
-                        <span class="participant-name" id="localName">You</span>
-                        <div class="video-controls">
-                            <span class="mic-indicator hidden" id="localMicIndicator">
-                                <i class="fas fa-microphone-slash"></i>
-                            </span>
-                            <span class="video-indicator hidden" id="localVideoIndicator">
-                                <i class="fas fa-video-slash"></i>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sidebar -->
-            <aside class="sidebar hidden" id="sidebar">
-                <!-- Participants Panel -->
-                <div class="panel" id="participantsPanel">
-                    <div class="panel-header">
-                        <h3>Participants</h3>
-                        <button class="close-btn" id="closeParticipants">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="panel-content">
-                        <div class="participants-list" id="participantsList">
-                            <div class="participant-item">
-                                <i class="fas fa-user"></i>
-                                <span>You (Host)</span>
-                                <div class="participant-status">
-                                    <i class="fas fa-microphone"></i>
-                                    <i class="fas fa-video"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Security Panel (Host Only) -->
-                <div class="panel hidden" id="securityPanel">
-                    <div class="panel-header">
-                        <h3>Security</h3>
-                        <button class="close-btn" id="closeSecurity">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="panel-content">
-                        <div class="security-controls">
-                            <h4>Manage Participants</h4>
-                            <div class="participants-management" id="participantsManagement">
-                                <!-- Host entry -->
-                                <div class="management-item host-item">
-                                    <div class="participant-info">
-                                        <i class="fas fa-crown"></i>
-                                        <span class="participant-name">You (Host)</span>
-                                    </div>
-                                    <div class="participant-actions">
-                                        <span class="host-badge">Host</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="waiting-list" id="waitingList">
-                            <h4>Waiting to Join</h4>
-                            <div id="waitingParticipants" class="waiting-participants">
-                                <!-- Waiting participants will be added here -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Chat Panel -->
-                <div class="panel hidden" id="chatPanel">
-                    <div class="panel-header">
-                        <h3>Chat</h3>
-                        <button class="close-btn" id="closeChat">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="panel-content">
-                        <div class="chat-messages" id="chatMessages"></div>
-                        <div class="chat-input-container">
-                            <input type="text" id="chatInput" placeholder="Type a message...">
-                            <button id="sendMessageBtn">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-        </main>
-
-        <!-- Control Bar -->
-        <footer class="control-bar">
-            <div class="control-group">
-                <button id="micBtn" class="control-btn active" title="Mute/Unmute">
-                    <i class="fas fa-microphone"></i>
-                </button>
-                <button id="videoBtn" class="control-btn active" title="Start/Stop Video">
-                    <i class="fas fa-video"></i>
-                </button>
-                <button id="screenShareBtn" class="control-btn" title="Share Screen">
-                    <i class="fas fa-desktop"></i>
-                </button>
-            </div>
-            
-            <div class="control-group">
-                <button id="endMeetingBtn" class="control-btn end-meeting-btn" title="End Meeting">
-                    <i class="fas fa-phone-slash"></i> End
-                </button>
-                <button id="leaveBtn" class="control-btn leave-btn" title="Leave Meeting">
-                    <i class="fas fa-sign-out-alt"></i> Leave
-                </button>
-            </div>
-        </footer>
-    </div>
-
-    <!-- Toast Notifications -->
-    <div id="toastContainer" class="toast-container"></div>
-
-    <!-- Join Request Modal -->
-    <div id="joinRequestModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-user-clock"></i> Join Request</h3>
-            </div>
-            <div class="modal-body">
-                <p><span id="requesterName"></span> wants to join the meeting.</p>
-                <p>Meeting ID: <span id="requestMeetingId"></span></p>
-            </div>
-            <div class="modal-footer">
-                <button id="acceptRequestBtn" class="btn-accept">
-                    <i class="fas fa-check"></i> Accept
-                </button>
-                <button id="declineRequestBtn" class="btn-decline">
-                    <i class="fas fa-times"></i> Decline
-                </button>
-            </div>
+    <main class="mr-main">
+      <aside class="mr-security" id="mr-security-panel">
+        <div class="mr-security-header">
+          <h3>Security</h3>
+          <button class="mr-btn" id="mr-close-security" title="Close"><i class="fas fa-xmark"></i></button>
         </div>
-    </div>
-
-    <!-- Waiting for Approval Modal -->
-    <div id="waitingModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-hourglass-half"></i> Waiting for Approval</h3>
-            </div>
-            <div class="modal-body">
-                <p>Please wait for the host to admit you to the meeting.</p>
-                <div class="waiting-animation">
-                    <div class="spinner"></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="cancelRequestBtn" class="btn-cancel">
-                    <i class="fas fa-sign-out-alt"></i> Cancel Request
-                </button>
-            </div>
+        <div class="mr-section">
+          <h4>Waiting Room</h4>
+          <ul id="mr-waiting-list" class="mr-list"></ul>
         </div>
-    </div>
+        <div class="mr-section">
+          <h4>Participants</h4>
+          <ul id="mr-participants-list" class="mr-list"></ul>
+        </div>
+      </aside>
 
-    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
-    <script src="meeting-room.js"></script>
+      <section class="mr-stage" id="mr-stage">
+        <div class="mr-grid" id="mr-video-grid">
+          <!-- Video tiles injected here -->
+        </div>
+        <div class="mr-waiting" id="mr-waiting" hidden>
+          <div class="mr-waiting-card">
+            <i class="fas fa-hourglass-half"></i>
+            <p>Waiting for host to admit you…</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="meeting-room.js"></script>
 </body>
 </html>
+
