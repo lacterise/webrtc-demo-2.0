@@ -94,11 +94,28 @@ class VideoMeetingApp {
         this.declineRequestBtn.addEventListener('click', () => this.declineJoinRequest());
         this.cancelRequestBtn.addEventListener('click', () => this.cancelJoinRequest());
         
-        // Get meeting ID from URL or generate new
-        const urlParams = new URLSearchParams(window.location.search);
-        this.meetingId = urlParams.get('meetingId') || this.generateMeetingId();
-        this.isHost = !urlParams.has('meetingId');
-        this.userName = urlParams.get('userName') || (this.isHost ? 'Host' : 'Participant');
+        // Determine meeting context (prefer localStorage from create.html)
+        const storedMeetingDataRaw = localStorage.getItem('meetingData');
+        if (storedMeetingDataRaw) {
+            try {
+                const storedMeetingData = JSON.parse(storedMeetingDataRaw);
+                if (storedMeetingData && storedMeetingData.meetingID) {
+                    this.meetingId = storedMeetingData.meetingID;
+                    this.isHost = !!storedMeetingData.isHost;
+                    this.userName = storedMeetingData.username || (this.isHost ? 'Host' : 'Participant');
+                }
+            } catch (_) {
+                // Ignore parse errors and fall back to URL params
+            }
+        }
+
+        // If not resolved by localStorage, fall back to URL or generate new
+        if (!this.meetingId) {
+            const urlParams = new URLSearchParams(window.location.search);
+            this.meetingId = urlParams.get('meetingId') || this.generateMeetingId();
+            this.isHost = !urlParams.has('meetingId');
+            this.userName = urlParams.get('userName') || (this.isHost ? 'Host' : 'Participant');
+        }
     }
     
     async initializeMeeting() {
