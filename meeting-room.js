@@ -13,6 +13,8 @@ class VideoMeetingApp {
         this.isScreenSharing = false;
         this.currentRequest = null; // Current join request being processed
         this.hostIp = null; // Store host IP address
+        this.approvedPeerIds = new Set(); // Host-approved peers allowed to connect
+        this.incomingCalls = {}; // Queue incoming calls until approved
         
         this.initializeElements();
         this.bindEvents();
@@ -172,6 +174,31 @@ class VideoMeetingApp {
                     });
                 });
             }
+
+            // Handle incoming media calls for both host and participants
+            this.peer.on('call', (call) => {
+                if (this.isHost) {
+                    // Answer only after host approves; queue otherwise
+                    if (this.approvedPeerIds.has(call.peer)) {
+                        try {
+                            call.answer(this.localStream);
+                            this.handlePeerCall(call);
+                        } catch (e) {
+                            console.error('Error answering approved call:', e);
+                        }
+                    } else {
+                        this.incomingCalls[call.peer] = call;
+                    }
+                } else {
+                    // Participants should answer incoming calls (e.g., host replacing tracks)
+                    try {
+                        call.answer(this.localStream);
+                        this.handlePeerCall(call);
+                    } catch (e) {
+                        console.error('Error answering incoming call:', e);
+                    }
+                }
+            });
             
         } catch (error) {
             console.error('Error initializing meeting:', error);
@@ -269,14 +296,19 @@ class VideoMeetingApp {
         
         // Handle the connection
         this.handlePeerConnection(request.conn);
-        
-        // Wait for the call
-        this.peer.on('call', (call) => {
-            if (call.peer === this.currentRequest) {
-                call.answer(this.localStream);
-                this.handlePeerCall(call);
+
+        // Mark as approved and answer any queued call from this peer
+        this.approvedPeerIds.add(this.currentRequest);
+        const queuedCall = this.incomingCalls[this.currentRequest];
+        if (queuedCall) {
+            try {
+                queuedCall.answer(this.localStream);
+                this.handlePeerCall(queuedCall);
+            } catch (e) {
+                console.error('Error answering queued call:', e);
             }
-        });
+            delete this.incomingCalls[this.currentRequest];
+        }
         
         // Remove from waiting list
         this.removeWaitingParticipant(this.currentRequest);
@@ -436,7 +468,7 @@ class VideoMeetingApp {
         
         const videoIndicator = document.createElement('span');
         videoIndicator.className = 'video-indicator hidden';
-        videoIndicator.id = `video-${peerId}`;
+        videoIndicator.id = `video-indicator-${peerId}`;
         videoIndicator.innerHTML = '<i class="fas fa-video-slash"></i>';
         
         controls.appendChild(micIndicator);
@@ -515,7 +547,7 @@ class VideoMeetingApp {
     }
     
     updatePeerVideoStatus(peerId, off) {
-        const indicator = document.getElementById(`video-${peerId}`);
+        const indicator = document.getElementById(`video-indicator-${peerId}`);
         if (indicator) {
             indicator.style.display = off ? 'block' : 'none';
         }
