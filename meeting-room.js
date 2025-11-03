@@ -94,26 +94,28 @@ class VideoMeetingApp {
         this.declineRequestBtn.addEventListener('click', () => this.declineJoinRequest());
         this.cancelRequestBtn.addEventListener('click', () => this.cancelJoinRequest());
         
-        // Determine meeting context (prefer localStorage from create.html)
-        const storedMeetingDataRaw = localStorage.getItem('meetingData');
-        if (storedMeetingDataRaw) {
-            try {
-                const storedMeetingData = JSON.parse(storedMeetingDataRaw);
-                if (storedMeetingData && storedMeetingData.meetingID) {
-                    this.meetingId = storedMeetingData.meetingID;
-                    this.isHost = !!storedMeetingData.isHost;
-                    this.userName = storedMeetingData.username || (this.isHost ? 'Host' : 'Participant');
-                }
-            } catch (_) {
-                // Ignore parse errors and fall back to URL params
+        // Prefer meeting data from localStorage (set by create.html), fallback to URL/generate
+        try {
+            const stored = localStorage.getItem('meetingData');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                this.meetingId = parsed.meetingID || parsed.peerId || this.meetingId;
+                this.isHost = parsed.isHost === true;
+                this.userName = parsed.username || (this.isHost ? 'Host' : 'Participant');
             }
+        } catch (_) {
+            // Ignore parse errors and fall back to URL/generate
         }
 
-        // If not resolved by localStorage, fall back to URL or generate new
+        // If still missing, use URL or generate
+        const urlParams = new URLSearchParams(window.location.search);
         if (!this.meetingId) {
-            const urlParams = new URLSearchParams(window.location.search);
             this.meetingId = urlParams.get('meetingId') || this.generateMeetingId();
+        }
+        if (typeof this.isHost !== 'boolean') {
             this.isHost = !urlParams.has('meetingId');
+        }
+        if (!this.userName) {
             this.userName = urlParams.get('userName') || (this.isHost ? 'Host' : 'Participant');
         }
     }
