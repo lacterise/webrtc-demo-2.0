@@ -174,11 +174,11 @@ class VideoMeetingApp {
                     });
                 });
             }
-
+            
             // Handle incoming media calls for both host and participants
             this.peer.on('call', (call) => {
                 if (this.isHost) {
-                    // Answer only after host approves; queue otherwise
+                    // For host: answer only after approval; queue otherwise
                     if (this.approvedPeerIds.has(call.peer)) {
                         try {
                             call.answer(this.localStream);
@@ -296,7 +296,7 @@ class VideoMeetingApp {
         
         // Handle the connection
         this.handlePeerConnection(request.conn);
-
+        
         // Mark as approved and answer any queued call from this peer
         this.approvedPeerIds.add(this.currentRequest);
         const queuedCall = this.incomingCalls[this.currentRequest];
@@ -468,7 +468,7 @@ class VideoMeetingApp {
         
         const videoIndicator = document.createElement('span');
         videoIndicator.className = 'video-indicator hidden';
-        videoIndicator.id = `video-indicator-${peerId}`;
+        videoIndicator.id = `video-${peerId}`;
         videoIndicator.innerHTML = '<i class="fas fa-video-slash"></i>';
         
         controls.appendChild(micIndicator);
@@ -547,7 +547,7 @@ class VideoMeetingApp {
     }
     
     updatePeerVideoStatus(peerId, off) {
-        const indicator = document.getElementById(`video-indicator-${peerId}`);
+        const indicator = document.getElementById(`video-${peerId}`);
         if (indicator) {
             indicator.style.display = off ? 'block' : 'none';
         }
