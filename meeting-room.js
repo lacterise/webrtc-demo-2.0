@@ -220,13 +220,6 @@ document.addEventListener('DOMContentLoaded', function() {
           broadcastMessage(messageData);
       } else {
           // If Client, send to Host (Host will broadcast to others)
-          // Find connection to host and send
-          // We don't have a direct reference to the single host connection easily stored in a global
-          // but we can find it in the peer.connections
-          // Or easier: we stored it in 'participants' usually, but participants list is peers.
-          // Let's iterate peer.connections to find the one to host.
-          // In this architecture, client initiates connection to hostPeerId.
-          
           if (peer.connections[meetingData.hostPeerId]) {
              const conns = peer.connections[meetingData.hostPeerId];
              if(conns && conns.length > 0) {
@@ -242,10 +235,8 @@ document.addEventListener('DOMContentLoaded', function() {
       const wrapper = document.createElement('div');
       wrapper.className = `message-wrapper ${isSelf ? 'self' : 'other'}`;
       
-      let html = '';
-      if (!isSelf) {
-          html += `<div class="message-sender">${data.sender}</div>`;
-      }
+      // FIXED: Always include the sender name, even for self
+      let html = `<div class="message-sender">${data.sender}</div>`;
       
       html += `
           <div class="message-bubble">${data.message}</div>
@@ -258,10 +249,10 @@ document.addEventListener('DOMContentLoaded', function() {
       // Scroll to bottom
       chatMessages.scrollTop = chatMessages.scrollHeight;
 
-      // If panel is closed and new message arrives, show notification dot (Optional enhancement)
+      // If panel is closed and new message arrives, show notification dot
       if(!chatPanel.classList.contains('active') && !isSelf) {
           const chatBtn = document.getElementById('chat-btn');
-          chatBtn.classList.add('active'); // Turn blue to indicate activity
+          chatBtn.classList.add('active'); 
           setTimeout(() => chatBtn.classList.remove('active'), 1000);
       }
   }

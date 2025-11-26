@@ -274,7 +274,16 @@ body {
   font-size: 11px;
   color: var(--text-secondary);
   margin-bottom: 2px;
-  padding-left: 5px;
+}
+
+/* Align sender name based on message side */
+.message-wrapper.other .message-sender {
+    padding-left: 5px;
+}
+
+.message-wrapper.self .message-sender {
+    padding-right: 5px;
+    text-align: right;
 }
 
 .message-bubble {
