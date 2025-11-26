@@ -120,6 +120,11 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // Display local video
       hostVideo.srcObject = localStream;
+
+      // Update icons to show as Active (On) immediately for the host
+      updateStatusIcon('host', 'audio', true);
+      updateStatusIcon('host', 'video', true);
+
     } catch (error) {
       console.error('Error getting user media:', error);
       showToast('Failed to access camera and microphone');
@@ -294,6 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (localStream) {
           localStream.getAudioTracks().forEach(track => track.enabled = false);
           updateMicButton(false);
+          updateStatusIcon('host', 'audio', false); // Update local icon too
           showToast('You have been muted by the host');
         }
         break;
@@ -558,11 +564,19 @@ document.addEventListener('DOMContentLoaded', function() {
       participantName.className = 'participant-name';
       participantName.textContent = name || participants[participantId]?.username || 'Unknown';
       
+      // Check initial state of the incoming stream
+      const isAudioEnabled = stream.getAudioTracks().length > 0 && stream.getAudioTracks()[0].enabled;
+      const isVideoEnabled = stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled;
+
+      // Determine classes based on state
+      const micClass = isAudioEnabled ? 'fas fa-microphone' : 'fas fa-microphone-slash muted-icon';
+      const videoClass = isVideoEnabled ? 'fas fa-video' : 'fas fa-video-slash muted-icon';
+
       const participantStatus = document.createElement('div');
       participantStatus.className = 'participant-status';
       participantStatus.innerHTML = `
-        <i class="fas fa-microphone-slash muted-icon"></i>
-        <i class="fas fa-video-slash muted-icon"></i>
+        <i class="${micClass}"></i>
+        <i class="${videoClass}"></i>
       `;
       
       videoInfo.appendChild(participantName);
@@ -604,6 +618,8 @@ document.addEventListener('DOMContentLoaded', function() {
       const enabled = !audioTracks[0].enabled;
       audioTracks[0].enabled = enabled;
       updateMicButton(enabled);
+      // Update visual icon on video feed
+      updateStatusIcon('host', 'audio', enabled);
     }
   }
   
@@ -630,6 +646,8 @@ document.addEventListener('DOMContentLoaded', function() {
       const enabled = !videoTracks[0].enabled;
       videoTracks[0].enabled = enabled;
       updateVideoButton(enabled);
+      // Update visual icon on video feed
+      updateStatusIcon('host', 'video', enabled);
     }
   }
   
@@ -644,6 +662,32 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
       icon.className = 'fas fa-video-slash';
       videoBtn.classList.add('active');
+    }
+  }
+
+  // Update Status Icon Helper
+  function updateStatusIcon(participantId, type, isEnabled) {
+    const containerId = participantId === 'host' ? 'host-video-container' : `video-${participantId}`;
+    const container = document.getElementById(containerId);
+    
+    if (!container) return;
+  
+    const statusContainer = container.querySelector('.participant-status');
+    if (!statusContainer) return;
+  
+    // Select the specific icon (first is mic, second is video)
+    const icon = type === 'audio' 
+      ? statusContainer.querySelector('.fa-microphone, .fa-microphone-slash')
+      : statusContainer.querySelector('.fa-video, .fa-video-slash');
+  
+    if (icon) {
+      if (isEnabled) {
+        icon.className = type === 'audio' ? 'fas fa-microphone' : 'fas fa-video';
+        icon.classList.remove('muted-icon');
+      } else {
+        icon.className = type === 'audio' ? 'fas fa-microphone-slash' : 'fas fa-video-slash';
+        icon.classList.add('muted-icon');
+      }
     }
   }
   
