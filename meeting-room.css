@@ -8,6 +8,8 @@
   --text-color: #FFFFFF;
   --text-secondary: #CCCCCC;
   --border-color: #3E3E42;
+  --message-self: #2D8CFF;
+  --message-other: #3E3E42;
 }
 
 * {
@@ -227,6 +229,113 @@ body {
   padding: 15px;
   overflow-y: auto;
   flex-grow: 1;
+}
+
+/* Chat Styles */
+.chat-content {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-messages {
+  flex-grow: 1;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.chat-system-msg {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin: 10px 0;
+}
+
+.message-wrapper {
+  display: flex;
+  flex-direction: column;
+  max-width: 85%;
+}
+
+.message-wrapper.self {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.message-wrapper.other {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.message-sender {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+  padding-left: 5px;
+}
+
+.message-bubble {
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  word-wrap: break-word;
+}
+
+.message-wrapper.self .message-bubble {
+  background-color: var(--message-self);
+  color: white;
+  border-bottom-right-radius: 2px;
+}
+
+.message-wrapper.other .message-bubble {
+  background-color: var(--message-other);
+  color: white;
+  border-bottom-left-radius: 2px;
+}
+
+.message-time {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 2px;
+  text-align: right;
+}
+
+.chat-footer {
+  padding: 15px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  gap: 10px;
+}
+
+#chat-input {
+  flex-grow: 1;
+  background-color: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 8px 15px;
+  color: var(--text-color);
+  outline: none;
+}
+
+#chat-input:focus {
+  border-color: var(--primary-color);
+}
+
+#send-msg-btn {
+  background-color: transparent;
+  color: var(--primary-color);
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0 5px;
+  transition: transform 0.1s;
+}
+
+#send-msg-btn:hover {
+  transform: scale(1.1);
 }
 
 /* Participants List */

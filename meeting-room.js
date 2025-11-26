@@ -15,9 +15,13 @@ document.addEventListener('DOMContentLoaded', function() {
   const videoGrid = document.getElementById('video-grid');
   const hostVideo = document.getElementById('host-video');
   const participantsPanel = document.getElementById('participants-panel');
+  const chatPanel = document.getElementById('chat-panel');
   const securityPanel = document.getElementById('security-panel');
   const authModal = document.getElementById('auth-modal');
   const toast = document.getElementById('toast');
+  const chatInput = document.getElementById('chat-input');
+  const sendMsgBtn = document.getElementById('send-msg-btn');
+  const chatMessages = document.getElementById('chat-messages');
   
   // Initialize meeting
   async function initMeeting() {
@@ -143,6 +147,13 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('participants-btn').addEventListener('click', () => {
       togglePanel(participantsPanel);
     });
+
+    // Chat Button Logic
+    document.getElementById('chat-btn').addEventListener('click', () => {
+        togglePanel(chatPanel);
+        // Focus input when opening
+        setTimeout(() => chatInput.focus(), 100);
+    });
     
     document.getElementById('security-btn').addEventListener('click', () => {
       if (isHost) {
@@ -158,6 +169,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const panelId = btn.getAttribute('data-panel');
         document.getElementById(panelId).classList.remove('active');
       });
+    });
+
+    // Chat Send Logic
+    sendMsgBtn.addEventListener('click', sendChatMessage);
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendChatMessage();
     });
     
     // Security options
@@ -180,6 +197,85 @@ document.addEventListener('DOMContentLoaded', function() {
       denyParticipant();
     });
   }
+
+  // --- CHAT FUNCTIONS ---
+
+  function sendChatMessage() {
+      const text = chatInput.value.trim();
+      if (!text) return;
+
+      const messageData = {
+          type: 'chat',
+          sender: meetingData.username,
+          message: text,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      // 1. Display locally
+      addMessageToChat(messageData, true);
+
+      // 2. Broadcast
+      if (isHost) {
+          // If Host, broadcast to everyone connected
+          broadcastMessage(messageData);
+      } else {
+          // If Client, send to Host (Host will broadcast to others)
+          // Find connection to host and send
+          // We don't have a direct reference to the single host connection easily stored in a global
+          // but we can find it in the peer.connections
+          // Or easier: we stored it in 'participants' usually, but participants list is peers.
+          // Let's iterate peer.connections to find the one to host.
+          // In this architecture, client initiates connection to hostPeerId.
+          
+          if (peer.connections[meetingData.hostPeerId]) {
+             const conns = peer.connections[meetingData.hostPeerId];
+             if(conns && conns.length > 0) {
+                 conns[0].send(messageData);
+             }
+          }
+      }
+
+      chatInput.value = '';
+  }
+
+  function addMessageToChat(data, isSelf = false) {
+      const wrapper = document.createElement('div');
+      wrapper.className = `message-wrapper ${isSelf ? 'self' : 'other'}`;
+      
+      let html = '';
+      if (!isSelf) {
+          html += `<div class="message-sender">${data.sender}</div>`;
+      }
+      
+      html += `
+          <div class="message-bubble">${data.message}</div>
+          <div class="message-time">${data.time}</div>
+      `;
+      
+      wrapper.innerHTML = html;
+      chatMessages.appendChild(wrapper);
+      
+      // Scroll to bottom
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      // If panel is closed and new message arrives, show notification dot (Optional enhancement)
+      if(!chatPanel.classList.contains('active') && !isSelf) {
+          const chatBtn = document.getElementById('chat-btn');
+          chatBtn.classList.add('active'); // Turn blue to indicate activity
+          setTimeout(() => chatBtn.classList.remove('active'), 1000);
+      }
+  }
+
+  // Host function to send data to all participants
+  function broadcastMessage(data, excludePeerId = null) {
+      Object.values(participants).forEach(p => {
+          if (p.conn && p.conn.open && p.id !== excludePeerId) {
+              p.conn.send(data);
+          }
+      });
+  }
+
+  // --- END CHAT FUNCTIONS ---
   
   // Update UI based on host status
   function updateHostUI() {
@@ -259,6 +355,12 @@ document.addEventListener('DOMContentLoaded', function() {
           // Auto-admit if waiting room is disabled
           admitParticipantById(conn.peer);
         }
+      } else if (data.type === 'chat') {
+          // Host received chat from a participant
+          // 1. Show locally
+          addMessageToChat(data, false);
+          // 2. Broadcast to everyone else
+          broadcastMessage(data, conn.peer);
       }
     });
   }
@@ -308,6 +410,9 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
           window.location.href = 'index.html';
         }, 2000);
+        break;
+      case 'chat':
+        addMessageToChat(data, false);
         break;
     }
   }

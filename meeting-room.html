@@ -9,7 +9,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.0/peerjs.min.js"></script>
 </head>
 <body>
-  <!-- Header with meeting info -->
   <header class="meeting-header">
     <div class="meeting-info">
       <div class="info-item">
@@ -34,11 +33,8 @@
     </div>
   </header>
 
-  <!-- Main content area -->
   <main class="meeting-container">
-    <!-- Video grid -->
     <section class="video-grid" id="video-grid">
-      <!-- Host video will be added here -->
       <div class="video-container host-video" id="host-video-container">
         <video id="host-video" autoplay muted playsinline></video>
         <div class="video-info">
@@ -51,7 +47,6 @@
       </div>
     </section>
 
-    <!-- Control bar -->
     <div class="control-bar">
       <div class="control-group">
         <button id="mic-btn" class="control-btn">
@@ -65,21 +60,13 @@
         </button>
       </div>
       <div class="control-group">
-        <button id="record-btn" class="control-btn">
-          <i class="fas fa-record-vinyl"></i>
-        </button>
         <button id="chat-btn" class="control-btn">
           <i class="fas fa-comment"></i>
         </button>
-        <button id="settings-btn" class="control-btn">
-          <i class="fas fa-cog"></i>
-        </button>
-      </div>
+        </div>
     </div>
   </main>
 
-  <!-- Side panels -->
-  <!-- Participants Panel -->
   <aside class="side-panel participants-panel" id="participants-panel">
     <div class="panel-header">
       <h3>Participants</h3>
@@ -89,12 +76,30 @@
     </div>
     <div class="panel-content">
       <div class="participants-list" id="participants-list">
-        <!-- Participants will be added here -->
-      </div>
+        </div>
     </div>
   </aside>
 
-  <!-- Security Panel (Host Only) -->
+  <aside class="side-panel chat-panel" id="chat-panel">
+    <div class="panel-header">
+      <h3>Chat</h3>
+      <button class="close-panel" data-panel="chat-panel">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="panel-content chat-content">
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-system-msg">Welcome to the chat!</div>
+      </div>
+    </div>
+    <div class="chat-footer">
+      <input type="text" id="chat-input" placeholder="Type a message...">
+      <button id="send-msg-btn">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  </aside>
+
   <aside class="side-panel security-panel" id="security-panel">
     <div class="panel-header">
       <h3>Security</h3>
@@ -122,13 +127,11 @@
       <div class="participants-management">
         <h4>Participants Management</h4>
         <div class="participants-list" id="security-participants-list">
-          <!-- Participants with management options will be added here -->
-        </div>
+          </div>
       </div>
     </div>
   </aside>
 
-  <!-- Authentication Modal (Host Only) -->
   <div class="modal" id="auth-modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -153,7 +156,6 @@
     </div>
   </div>
 
-  <!-- Notification Toast -->
   <div class="toast" id="toast">
     <div class="toast-content">
       <i class="fas fa-info-circle"></i>
