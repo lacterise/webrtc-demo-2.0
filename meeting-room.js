@@ -235,7 +235,6 @@ document.addEventListener('DOMContentLoaded', function() {
       const wrapper = document.createElement('div');
       wrapper.className = `message-wrapper ${isSelf ? 'self' : 'other'}`;
       
-      // FIXED: Always include the sender name, even for self
       let html = `<div class="message-sender">${data.sender}</div>`;
       
       html += `
@@ -352,6 +351,10 @@ document.addEventListener('DOMContentLoaded', function() {
           addMessageToChat(data, false);
           // 2. Broadcast to everyone else
           broadcastMessage(data, conn.peer);
+      } else if (data.type === 'status-update') {
+          // [UPDATED] Receive status update from participant
+          // Update the icon in the video grid
+          updateStatusIcon(conn.peer, data.kind, data.status);
       }
     });
   }
@@ -393,6 +396,7 @@ document.addEventListener('DOMContentLoaded', function() {
           localStream.getAudioTracks().forEach(track => track.enabled = false);
           updateMicButton(false);
           updateStatusIcon('host', 'audio', false); // Update local icon too
+          broadcastStatusUpdate('audio', false); // Notify host
           showToast('You have been muted by the host');
         }
         break;
@@ -609,6 +613,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update local state
     participant.muted = true;
     
+    // [UPDATED] Force update the icon immediately for Host
+    updateStatusIcon(participantId, 'audio', false);
+    
     showToast(`${participant.username} has been muted`);
   }
   
@@ -703,8 +710,9 @@ document.addEventListener('DOMContentLoaded', function() {
   function toggleMicrophone() {
     if (!localStream) return;
     
-    // Participants can't toggle their own mic
-    if (!isHost) {
+    // Participants can't toggle their own mic if muted by host (optional check)
+    // For now we allow them to try, but Host can enforce muting via commands
+    if (!isHost && meetingData.mutedByHost) { 
       showToast('Only the host can mute/unmute');
       return;
     }
@@ -716,6 +724,9 @@ document.addEventListener('DOMContentLoaded', function() {
       updateMicButton(enabled);
       // Update visual icon on video feed
       updateStatusIcon('host', 'audio', enabled);
+
+      // [UPDATED] Send status update to others
+      broadcastStatusUpdate('audio', enabled);
     }
   }
   
@@ -744,6 +755,9 @@ document.addEventListener('DOMContentLoaded', function() {
       updateVideoButton(enabled);
       // Update visual icon on video feed
       updateStatusIcon('host', 'video', enabled);
+
+      // [UPDATED] Send status update to others
+      broadcastStatusUpdate('video', enabled);
     }
   }
   
@@ -758,6 +772,33 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
       icon.className = 'fas fa-video-slash';
       videoBtn.classList.add('active');
+    }
+  }
+
+  // [NEW] Helper function to send status updates
+  function broadcastStatusUpdate(type, status) {
+    const message = {
+      type: 'status-update',
+      kind: type, // 'audio' or 'video'
+      status: status,
+      participantId: peer.id
+    };
+
+    if (isHost) {
+      // If Host, send to all participants
+      Object.values(participants).forEach(p => {
+        if (p.conn && p.conn.open) {
+          p.conn.send(message);
+        }
+      });
+    } else {
+      // If Client, send to Host
+      if (peer.connections[meetingData.hostPeerId]) {
+        const conns = peer.connections[meetingData.hostPeerId];
+        if(conns && conns.length > 0) {
+          conns[0].send(message);
+        }
+      }
     }
   }
 
