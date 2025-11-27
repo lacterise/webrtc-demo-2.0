@@ -11,34 +11,25 @@
 <body>
   <div class="container">
     <section class="client-page">
-      <h2>Join Meeting</h2>
-      <p style="text-align: center; color: var(--text-secondary); margin-bottom: 30px;">
-        Enter the meeting details provided by the host.
-      </p>
+      <h2>Join a Meeting</h2>
 
-      <div class="form-group">
+      <div class="form-box">
         <label for="host-ip">Host IP Address</label>
-        <input type="text" id="host-ip" placeholder="e.g., 192.168.1.100" />
-      </div>
+        <input type="text" id="host-ip" placeholder="Enter Host IP Address (e.g., 192.168.1.100)" />
 
-      <div class="form-group">
-        <label for="meeting-id">Meeting ID</label>
-        <input type="text" id="meeting-id" placeholder="Enter Meeting ID" />
-      </div>
+        <label for="meeting-id">Meeting ID (PeerJS)</label>
+        <input type="text" id="meeting-id" placeholder="Enter PeerJS Meeting ID" />
 
-      <div class="form-group">
         <label for="username">Your Name</label>
-        <input type="text" id="username" placeholder="Enter your display name" />
-      </div>
+        <input type="text" id="username" placeholder="Enter your name" />
 
-      <div class="form-group">
-        <label for="meeting-pass">Password (Optional)</label>
-        <input type="password" id="meeting-pass" placeholder="Enter meeting password" />
-      </div>
+        <label for="meeting-pass">Password</label>
+        <input type="password" id="meeting-pass" placeholder="Enter Password (if any)" />
 
-      <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="joinMeeting()">
-        <i class="fas fa-video"></i> Join Now
-      </button>
+        <button class="btn btn-primary" onclick="joinMeeting()">
+          <i class="fas fa-video"></i> Join Meeting
+        </button>
+      </div>
 
       <div class="nav-back">
         <button class="btn" onclick="window.location.href='index.html'">
@@ -57,8 +48,10 @@
           throw new Error('PeerJS library failed to load');
         }
 
+        // Generate a random peer ID for this participant
         const participantId = 'participant_' + Math.random().toString(36).substr(2, 9);
         
+        // Initialize PeerJS
         peer = new Peer(participantId, {
           debug: 0,
           config: {
@@ -93,16 +86,19 @@
         return;
       }
 
+      // Show loading state
       const joinBtn = document.querySelector('.btn-primary');
       const originalText = joinBtn.innerHTML;
       joinBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
       joinBtn.disabled = true;
 
       try {
+        // Wait for PeerJS to initialize if it's not ready
         if (!peer || peer.disconnected) {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
+        // Store user data in localStorage for the meeting room
         const meetingData = {
           hostIP: hostIP,
           meetingID: meetingID,
@@ -110,11 +106,12 @@
           password: password,
           isHost: false,
           peerId: peer ? peer.id : null,
-          hostPeerId: meetingID 
+          hostPeerId: meetingID // The meeting ID is the host's PeerJS ID
         };
 
         localStorage.setItem('meetingData', JSON.stringify(meetingData));
 
+        // Try to connect to the host using PeerJS
         if (peer && !peer.destroyed) {
           try {
             const conn = peer.connect(meetingID, {
@@ -124,6 +121,7 @@
             conn.on('open', function() {
               console.log('Connected to host:', meetingID);
               
+              // Send join message to host
               conn.send({
                 type: 'join',
                 participantId: peer.id,
@@ -131,6 +129,7 @@
                 message: `${username} has joined the meeting`
               });
 
+              // Redirect to meeting room
               setTimeout(() => {
                 window.location.href = 'meeting-room.html';
               }, 500);
@@ -138,11 +137,13 @@
 
             conn.on('error', function(err) {
               console.error('Connection error:', err);
+              // Still redirect to meeting room (fallback)
               setTimeout(() => {
                 window.location.href = 'meeting-room.html';
               }, 500);
             });
 
+            // Set timeout for connection attempt
             setTimeout(() => {
               if (conn.open) return;
               console.log('Connection timeout, redirecting anyway...');
@@ -151,9 +152,11 @@
 
           } catch (connError) {
             console.error('Connection attempt failed:', connError);
+            // Redirect anyway (fallback)
             window.location.href = 'meeting-room.html';
           }
         } else {
+          // PeerJS not available, redirect without connection
           window.location.href = 'meeting-room.html';
         }
 
@@ -165,11 +168,13 @@
       }
     }
 
+    // Auto-focus on first input
     document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('host-ip').focus();
       initializePeerJS();
     });
 
+    // Clean up PeerJS connection when leaving the page
     window.addEventListener('beforeunload', function() {
       if (peer && !peer.destroyed) {
         peer.destroy();
