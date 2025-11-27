@@ -271,13 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function updateHostUI() {
     if (!isHost) {
       // Hide security button for participants
-      const securityBtn = document.getElementById('security-btn');
-      if (securityBtn) securityBtn.style.display = 'none';
-
-      // [FIX] Also hide the security panel DOM element completely
-      // This prevents it from being visible off-screen on mobile devices
-      const securityPanel = document.getElementById('security-panel');
-      if (securityPanel) securityPanel.style.display = 'none';
+      document.getElementById('security-btn').style.display = 'none';
       
       // Update host video label
       document.querySelector('.host-video .participant-name').textContent = meetingData.username;
@@ -579,6 +573,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     leftDiv.appendChild(avatar);
     leftDiv.appendChild(name);
+    
+    item.appendChild(leftDiv);
     
     // Add IP for host view
     if (isHost && participant.ip) {
