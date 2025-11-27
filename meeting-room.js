@@ -347,14 +347,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       } else if (data.type === 'chat') {
           // Host received chat from a participant
-          // 1. Show locally
           addMessageToChat(data, false);
-          // 2. Broadcast to everyone else
           broadcastMessage(data, conn.peer);
+
       } else if (data.type === 'status-update') {
           // [UPDATED] Receive status update from participant
           // Update the icon in the video grid
           updateStatusIcon(conn.peer, data.kind, data.status);
+
+          // If it's an audio update, also sync the Participant List icon (the red circled one)
+          if (data.kind === 'audio') {
+            if (participants[conn.peer]) {
+               participants[conn.peer].muted = !data.status; // data.status is "isEnabled", so muted is opposite
+               updateParticipantListButton(conn.peer, !data.status);
+            }
+          }
       }
     });
   }
@@ -395,9 +402,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (localStream) {
           localStream.getAudioTracks().forEach(track => track.enabled = false);
           updateMicButton(false);
-          updateStatusIcon('host', 'audio', false); // Update local icon too
+          updateStatusIcon('host', 'audio', false); // Update local icon
           broadcastStatusUpdate('audio', false); // Notify host
           showToast('You have been muted by the host');
+        }
+        break;
+      case 'unmute': // [NEW] Handle unmute command
+        if (localStream) {
+          localStream.getAudioTracks().forEach(track => track.enabled = true);
+          updateMicButton(true);
+          updateStatusIcon('host', 'audio', true); // Update local icon
+          broadcastStatusUpdate('audio', true); // Notify host
+          showToast('You have been unmuted by the host');
         }
         break;
       case 'kicked':
@@ -532,7 +548,7 @@ document.addEventListener('DOMContentLoaded', function() {
       participantsList.appendChild(participantItem);
       
       if (isHost) {
-        const securityItem = createParticipantItem(participant, true);
+        const securityItem = createParticipantItem(participant, true); // showActions = true
         securityParticipantsList.appendChild(securityItem);
       }
     });
@@ -576,12 +592,22 @@ document.addEventListener('DOMContentLoaded', function() {
       const rightDiv = document.createElement('div');
       rightDiv.className = 'participant-item-right';
       
-      // Mute button
+      // [FIX] Mute/Unmute button with Logic
       const muteBtn = document.createElement('button');
       muteBtn.className = 'participant-action-btn';
-      muteBtn.innerHTML = '<i class="fas fa-microphone-slash"></i>';
-      muteBtn.title = 'Mute';
-      muteBtn.addEventListener('click', () => muteParticipant(participant.id));
+      muteBtn.id = `btn-mute-${participant.id}`; // Give it an ID to find it later
+      
+      // Initial Icon State
+      if (participant.muted) {
+          muteBtn.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+      } else {
+          muteBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+      }
+      
+      muteBtn.title = participant.muted ? 'Unmute' : 'Mute';
+      
+      // Call NEW toggle function
+      muteBtn.addEventListener('click', () => toggleMuteParticipant(participant.id));
       
       // Kick button
       const kickBtn = document.createElement('button');
@@ -598,27 +624,48 @@ document.addEventListener('DOMContentLoaded', function() {
     return item;
   }
   
-  // Mute participant (host only)
-  function muteParticipant(participantId) {
+  // [NEW] Toggle Mute/Unmute Participant (Replaces muteParticipant)
+  function toggleMuteParticipant(participantId) {
     if (!isHost) return;
     
     const participant = participants[participantId];
     if (!participant) return;
+
+    // Determine new state (Toggle)
+    const newMuteState = !participant.muted;
     
-    // Send mute command
+    // Send correct command
     participant.conn.send({
-      type: 'mute'
+      type: newMuteState ? 'mute' : 'unmute'
     });
     
     // Update local state
-    participant.muted = true;
+    participant.muted = newMuteState;
     
-    // [UPDATED] Force update the icon immediately for Host
-    updateStatusIcon(participantId, 'audio', false);
+    // Update UI - Video Grid Icon
+    // Note: updateStatusIcon takes "isEnabled", so we pass the OPPOSITE of "newMuteState"
+    updateStatusIcon(participantId, 'audio', !newMuteState); 
     
-    showToast(`${participant.username} has been muted`);
+    // Update UI - Participant List Button (The red circled one)
+    updateParticipantListButton(participantId, newMuteState);
+
+    showToast(`${participant.username} has been ${newMuteState ? 'muted' : 'unmuted'}`);
   }
-  
+
+  // [NEW] Helper to update the button icon in the list
+  function updateParticipantListButton(participantId, isMuted) {
+      const btn = document.getElementById(`btn-mute-${participantId}`);
+      if (btn) {
+          if (isMuted) {
+              btn.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+              btn.title = "Unmute";
+          } else {
+              btn.innerHTML = '<i class="fas fa-microphone"></i>';
+              btn.title = "Mute";
+          }
+      }
+  }
+
   // Kick participant (host only)
   function kickParticipant(participantId) {
     if (!isHost) return;
