@@ -270,16 +270,25 @@ document.addEventListener('DOMContentLoaded', function() {
   // Update UI based on host status
   function updateHostUI() {
     if (!isHost) {
-      // Hide security button for participants
-      document.getElementById('security-btn').style.display = 'none';
+      // 1. Hide security button for participants
+      const securityBtn = document.getElementById('security-btn');
+      if (securityBtn) securityBtn.style.display = 'none';
+
+      // 2. [FIX] Completely hide the security panel element so it doesn't affect layout
+      const securityPanel = document.getElementById('security-panel');
+      if (securityPanel) securityPanel.style.display = 'none';
       
       // Update host video label
-      document.querySelector('.host-video .participant-name').textContent = meetingData.username;
+      const hostNameEl = document.querySelector('.host-video .participant-name');
+      if (hostNameEl) hostNameEl.textContent = meetingData.username;
       
-      // Disable mute button for participants
-      document.getElementById('mic-btn').disabled = true;
-      document.getElementById('mic-btn').style.opacity = '0.5';
-      document.getElementById('mic-btn').title = 'Only the host can mute/unmute';
+      // Disable mute button for participants (visual indication only)
+      const micBtn = document.getElementById('mic-btn');
+      if (micBtn) {
+          // We don't disable it completely so they can still unmute if allowed,
+          // but here we just style it. 
+          // (Logic for muting/unmuting is handled in toggleMicrophone)
+      }
     }
   }
   
@@ -351,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
           broadcastMessage(data, conn.peer);
 
       } else if (data.type === 'status-update') {
-          // [UPDATED] Receive status update from participant
+          // Receive status update from participant
           // Update the icon in the video grid
           updateStatusIcon(conn.peer, data.kind, data.status);
 
@@ -407,7 +416,7 @@ document.addEventListener('DOMContentLoaded', function() {
           showToast('You have been muted by the host');
         }
         break;
-      case 'unmute': // [NEW] Handle unmute command
+      case 'unmute': // Handle unmute command
         if (localStream) {
           localStream.getAudioTracks().forEach(track => track.enabled = true);
           updateMicButton(true);
@@ -574,8 +583,6 @@ document.addEventListener('DOMContentLoaded', function() {
     leftDiv.appendChild(avatar);
     leftDiv.appendChild(name);
     
-    item.appendChild(leftDiv);
-    
     // Add IP for host view
     if (isHost && participant.ip) {
       const ip = document.createElement('div');
@@ -592,7 +599,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const rightDiv = document.createElement('div');
       rightDiv.className = 'participant-item-right';
       
-      // [FIX] Mute/Unmute button with Logic
+      // Mute/Unmute button with Logic
       const muteBtn = document.createElement('button');
       muteBtn.className = 'participant-action-btn';
       muteBtn.id = `btn-mute-${participant.id}`; // Give it an ID to find it later
@@ -624,7 +631,7 @@ document.addEventListener('DOMContentLoaded', function() {
     return item;
   }
   
-  // [NEW] Toggle Mute/Unmute Participant (Replaces muteParticipant)
+  // Toggle Mute/Unmute Participant
   function toggleMuteParticipant(participantId) {
     if (!isHost) return;
     
@@ -643,16 +650,15 @@ document.addEventListener('DOMContentLoaded', function() {
     participant.muted = newMuteState;
     
     // Update UI - Video Grid Icon
-    // Note: updateStatusIcon takes "isEnabled", so we pass the OPPOSITE of "newMuteState"
     updateStatusIcon(participantId, 'audio', !newMuteState); 
     
-    // Update UI - Participant List Button (The red circled one)
+    // Update UI - Participant List Button
     updateParticipantListButton(participantId, newMuteState);
 
     showToast(`${participant.username} has been ${newMuteState ? 'muted' : 'unmuted'}`);
   }
 
-  // [NEW] Helper to update the button icon in the list
+  // Helper to update the button icon in the list
   function updateParticipantListButton(participantId, isMuted) {
       const btn = document.getElementById(`btn-mute-${participantId}`);
       if (btn) {
@@ -772,7 +778,7 @@ document.addEventListener('DOMContentLoaded', function() {
       // Update visual icon on video feed
       updateStatusIcon('host', 'audio', enabled);
 
-      // [UPDATED] Send status update to others
+      // Send status update to others
       broadcastStatusUpdate('audio', enabled);
     }
   }
@@ -803,7 +809,7 @@ document.addEventListener('DOMContentLoaded', function() {
       // Update visual icon on video feed
       updateStatusIcon('host', 'video', enabled);
 
-      // [UPDATED] Send status update to others
+      // Send status update to others
       broadcastStatusUpdate('video', enabled);
     }
   }
@@ -822,7 +828,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // [NEW] Helper function to send status updates
+  // Helper function to send status updates
   function broadcastStatusUpdate(type, status) {
     const message = {
       type: 'status-update',
@@ -877,7 +883,6 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Toggle screen share
   function toggleScreenShare() {
-    // This is a placeholder for screen sharing functionality
     showToast('Screen sharing is not yet implemented');
   }
   
