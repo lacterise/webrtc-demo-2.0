@@ -1,238 +1,255 @@
+:root {
+  --primary-color: #2D8CFF;
+  --secondary-color: #0E71EB;
+  --background-color: #121212;
+  --surface-color: #1E1E1E;
+  --surface-hover: #2d2d30;
+  --text-color: #FFFFFF;
+  --text-secondary: #B0B0B0;
+  --border-color: #3E3E42;
+  --input-bg: #2D2D30;
+  --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  --radius: 12px;
+  --transition: all 0.3s ease;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 body {
-  font-family: Arial, sans-serif;
-  background-color: #fff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  min-height: 100vh;
+  line-height: 1.6;
 }
 
+/* === Layout & Containers === */
 .container {
+  width: 100%;
+  max-width: 1200px;
+  padding: 20px;
   text-align: center;
 }
 
-section {
-  margin: 40px 0;
-}
-
-h2 {
-  font-weight: 500;
-  margin-bottom: 10px;
-}
-
-.box, .form-box {
-  display: inline-block;
-  border: 3px solid #000;
-  padding: 30px 40px;
-  border-radius: 6px;
+/* Common Card Styles for all pages (Home, Client, Create, Schedule) */
+.home-box, 
+.form-box, 
+.schedule-form,
+.host-page, 
+.client-page {
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 40px;
+  box-shadow: var(--shadow);
+  max-width: 500px;
+  margin: 0 auto;
   text-align: left;
+  transition: var(--transition);
 }
 
-.btn {
-  margin: 10px 0;
-  padding: 8px 16px;
-  border: 2px solid #000;
-  background-color: white;
-  cursor: pointer;
-  font-size: 16px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
+/* Specific adjustment for wider forms if needed */
+.schedule-page .schedule-form {
+  max-width: 700px;
 }
 
-.btn:hover {
-  background-color: #f0f0f0;
+/* === Typography === */
+h1, h2, h3 {
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 1.5rem;
+  text-align: center;
 }
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 1.8rem; }
 
 label {
   display: block;
-  margin: 10px 0 5px;
-  font-weight: bold;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
-input {
+/* === Forms & Inputs === */
+input[type="text"],
+input[type="password"],
+input[type="datetime-local"],
+select,
+textarea {
   width: 100%;
-  padding: 6px;
-  font-size: 15px;
-  border: 2px solid #000;
-  border-radius: 4px;
-}
-
-/* ===== Schedule Page Styling ===== */
-.schedule-page {
-  max-width: 600px;
-  margin: 40px auto;
-  padding: 0 20px;
-  text-align: left;
-  font-family: "Helvetica Neue", Arial, sans-serif;
-}
-
-.schedule-header {
-  margin-bottom: 20px;
-}
-
-.schedule-header h1 {
-  font-weight: 600;
-  font-size: 28px;
-  color: #2d2d2d;
-  text-align: center;
-}
-
-.schedule-form {
-  background-color: #fff;
-  padding: 25px 35px;
+  padding: 12px 16px;
+  background-color: var(--input-bg);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  border: 3px solid #000; /* black border */
-  box-shadow: none;
-}
-
-.form-section {
+  color: var(--text-color);
+  font-size: 1rem;
   margin-bottom: 20px;
+  transition: var(--transition);
+  outline: none;
 }
 
-.form-section label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: #333;
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(45, 140, 255, 0.2);
 }
 
-.form-section input,
-.form-section select,
-.form-section textarea {
-  width: 100%;
-  padding: 10px;
-  font-size: 15px;
-  border: 2px solid #000;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-.form-section textarea {
+textarea {
   resize: vertical;
-  min-height: 80px;
+  min-height: 100px;
 }
 
-.two-cols {
-  display: flex;
-  gap: 20px;
-}
-
-.two-cols > div {
-  flex: 1;
-}
-
-.form-buttons {
-  text-align: right;
-  margin-top: 30px;
-}
-
-.btn-primary {
-  background-color: #0e72ed;
-  color: #fff;
+/* === Buttons === */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
   border: none;
-  padding: 10px 20px;
-  font-size: 15px;
-  border-radius: 4px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: var(--transition);
+  gap: 8px;
+  text-decoration: none;
+  width: 100%; /* Full width on mobile/cards */
+}
+
+/* Primary Action Button */
+.btn-primary {
+  background-color: var(--primary-color);
+  color: #fff;
 }
 
 .btn-primary:hover {
-  background-color: #0b5fcc;
-}
-
-.btn-primary {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  justify-content: center;
-}
-
-.btn-primary i {
-  font-size: 0.9rem;
+  background-color: var(--secondary-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(45, 140, 255, 0.3);
 }
 
 .btn-primary:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+  transform: none;
 }
 
-.fa-spin {
-  animation: fa-spin 2s infinite linear;
+/* Secondary / Cancel Button */
+.btn-secondary, .btn-cancel {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
 }
 
-@keyframes fa-spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.btn-secondary:hover, .btn-cancel:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-color);
+  border-color: var(--text-secondary);
 }
 
-.btn-cancel {
-  background-color: #e0e0e0;
-  color: #000;
-  border: none;
-  padding: 10px 20px;
-  margin-right: 10px;
-  font-size: 15px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.btn-cancel:hover {
-  background-color: #cfcfcf;
-}
-
-/* ===== Responsive Design ===== */
-@media (max-width: 768px) {
-  .two-cols {
-    flex-direction: column;
-  }
-
-  .schedule-page {
-    margin: 20px;
-    padding: 0 10px;
-  }
-
-  .form-buttons {
-    text-align: center;
-  }
-
-  .btn-cancel,
-  .btn-primary {
-    width: 100%;
-    margin: 8px 0;
-  }
-}
-
-/* ===== Home / Host / Client Shared Styling ===== */
-
-.home-box, .host-page, .client-page {
-  max-width: 500px;
-  margin: 60px auto;
-  border: 3px solid #000;
-  border-radius: 8px;
-  padding: 30px 40px;
-  background-color: #fff;
-}
-
-.home-box h2, .host-page h2, .client-page h2 {
-  margin-bottom: 20px;
+/* Back/Navigation Buttons */
+.nav-back {
+  margin-top: 25px;
   text-align: center;
 }
 
+.nav-back .btn {
+  background: none;
+  color: var(--text-secondary);
+  font-weight: normal;
+  width: auto;
+  padding: 8px 16px;
+}
+
+.nav-back .btn:hover {
+  color: var(--text-color);
+  text-decoration: underline;
+}
+
+/* === Specific Page Layouts === */
+
+/* Home Page */
 .home-buttons {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+/* Schedule Page Grid */
+.two-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
 
-.nav-back {
-  text-align: center;
-  margin-top: 20px;
+.form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 30px;
 }
 
-.container h1 {
-  text-align: center;
-  font-size: 28px;
-  margin-top: 40px;
+.form-buttons .btn {
+  width: auto;
+}
+
+/* Icons within buttons */
+.btn i {
+  font-size: 1.1em;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.container {
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* === Responsive Design === */
+@media (min-width: 768px) {
+  .home-buttons {
+    flex-direction: row;
+  }
+  
+  .btn {
+    width: auto; /* Buttons auto-width on desktop */
+  }
+
+  .home-box, .form-box, .client-page {
+    padding: 50px;
+  }
+}
+
+@media (max-width: 768px) {
+  .two-cols {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  
+  .container {
+    padding: 15px;
+  }
+}
+
+/* Loading Spinner */
+.fa-spin {
+  animation: fa-spin 1s infinite linear;
+}
+@keyframes fa-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }

@@ -3,21 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Meeting App - Home</title>
+  <title>Meeting App</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
   <div class="container">
-    <h1>Welcome to Your Meeting App</h1>
-
     <div class="home-box">
+      <h1>
+        <i class="fas fa-video" style="color: var(--primary-color);"></i><br>
+        Meeting App
+      </h1>
+      <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">
+        Secure, high-quality video conferencing for everyone.
+      </p>
+
       <div class="home-buttons">
         <button class="btn btn-primary" onclick="window.location.href='create.html'">
-          <i class="fas fa-plus-circle"></i> Create Meeting
+          <i class="fas fa-plus-circle"></i> New Meeting
         </button>
-        <button class="btn btn-primary" onclick="window.location.href='client.html'">
-          <i class="fas fa-sign-in-alt"></i> Join Meeting
+        <button class="btn btn-secondary" onclick="window.location.href='client.html'">
+          <i class="fas fa-keyboard"></i> Join with Code
         </button>
       </div>
     </div>
