@@ -1,4 +1,3 @@
-// file: lacterise/webrtc-demo-2.0/webrtc-demo-2.0-488a84ab6504a3abfe5ae6e4fa8212be06dc9680/schedule.js
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("scheduleForm");
 
