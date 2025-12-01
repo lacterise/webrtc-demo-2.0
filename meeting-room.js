@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let meetingLocked = false;
   let pendingParticipants = {};
   
-  // Track local state to sync with others
+  // Track local state
   let localState = {
     audio: true,
     video: true
@@ -22,8 +22,11 @@ document.addEventListener('DOMContentLoaded', function() {
   const hostVideo = document.getElementById('host-video');
   const participantsPanel = document.getElementById('participants-panel');
   const chatPanel = document.getElementById('chat-panel');
-  const securityPanel = document.getElementById('security-panel');
-  const securityBtn = document.getElementById('security-btn'); // Added reference
+  
+  // These might be removed for clients, so we query them safely later or handle nulls
+  let securityPanel = document.getElementById('security-panel');
+  let securityBtn = document.getElementById('security-btn'); 
+  
   const authModal = document.getElementById('auth-modal');
   const toast = document.getElementById('toast');
   const chatInput = document.getElementById('chat-input');
@@ -33,40 +36,29 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize meeting
   async function initMeeting() {
     try {
-      // Get meeting data from localStorage
       const storedData = localStorage.getItem('meetingData');
       if (!storedData) {
         showToast('Meeting data not found. Redirecting to home...');
-        setTimeout(() => {
-          window.location.href = 'index.html';
-        }, 2000);
+        setTimeout(() => window.location.href = 'index.html', 2000);
         return;
       }
       
       meetingData = JSON.parse(storedData);
       isHost = meetingData.isHost;
       
-      // Display meeting info
       ipAddressEl.textContent = meetingData.hostIP || 'Unknown';
       meetingIdEl.textContent = meetingData.meetingID;
       
-      // Show/hide host-specific elements IMMEDIATELY
+      // 1. UPDATE UI permissions IMMEDIATELY
       updateHostUI();
 
-      // Initialize PeerJS
       await initializePeerJS();
-      
-      // Get user media
       await getUserMedia();
-      
-      // Set up event listeners
       setupEventListeners();
       
-      // If host, start listening for connections
       if (isHost) {
         startListeningForConnections();
       } else {
-        // If participant, connect to host
         connectToHost();
       }
       
@@ -81,11 +73,8 @@ document.addEventListener('DOMContentLoaded', function() {
   async function initializePeerJS() {
     return new Promise((resolve, reject) => {
       try {
-        if (typeof Peer === 'undefined') {
-          throw new Error('PeerJS library failed to load');
-        }
+        if (typeof Peer === 'undefined') throw new Error('PeerJS library failed to load');
         
-        // Create a new peer with the stored peer ID
         peer = new Peer(meetingData.peerId, {
           debug: 0,
           config: {
@@ -96,23 +85,21 @@ document.addEventListener('DOMContentLoaded', function() {
           }
         });
         
-        peer.on('open', function(id) {
+        peer.on('open', (id) => {
           console.log('PeerJS connection opened with ID:', id);
           resolve();
         });
         
-        peer.on('error', function(err) {
+        peer.on('error', (err) => {
           console.error('PeerJS error:', err);
           reject(err);
         });
         
-        peer.on('connection', function(conn) {
-          console.log('Incoming connection from:', conn.peer);
+        peer.on('connection', (conn) => {
           handleIncomingConnection(conn);
         });
         
-        peer.on('call', function(call) {
-          console.log('Incoming call from:', call.peer);
+        peer.on('call', (call) => {
           handleIncomingCall(call);
         });
       } catch (error) {
@@ -129,14 +116,16 @@ document.addEventListener('DOMContentLoaded', function() {
         audio: true
       });
       
-      // Display local video
       hostVideo.srcObject = localStream;
 
-      // Update initial state based on stream
+      // Initial State
       localState.audio = localStream.getAudioTracks()[0].enabled;
       localState.video = localStream.getVideoTracks()[0].enabled;
 
-      // Update local icons
+      // If Client: Force Audio OFF by default if you want them muted on join
+      // Or keep it ON but remove controls. 
+      // User said "participants can't mute themselves", implying Host has control.
+      
       updateStatusIcon('host', 'audio', localState.audio);
       updateStatusIcon('host', 'video', localState.video);
 
@@ -146,32 +135,32 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Set up event listeners
   function setupEventListeners() {
-    // Control buttons
-    document.getElementById('mic-btn').addEventListener('click', toggleMicrophone);
+    // Shared Controls
     document.getElementById('video-btn').addEventListener('click', toggleVideo);
-    document.getElementById('screen-share-btn').addEventListener('click', toggleScreenShare);
+    document.getElementById('screen-share-btn').addEventListener('click', () => showToast('Screen sharing coming soon'));
     document.getElementById('leave-btn').addEventListener('click', leaveMeeting);
     
-    // Panel buttons
-    document.getElementById('participants-btn').addEventListener('click', () => {
-      togglePanel(participantsPanel);
-    });
-
+    // Mic Button: Only attach listener if button exists (Host only)
+    const micBtn = document.getElementById('mic-btn');
+    if (micBtn && micBtn.style.display !== 'none') {
+        micBtn.addEventListener('click', toggleMicrophone);
+    }
+    
+    // Panels
+    document.getElementById('participants-btn').addEventListener('click', () => togglePanel(participantsPanel));
+    
     document.getElementById('chat-btn').addEventListener('click', () => {
         togglePanel(chatPanel);
         setTimeout(() => chatInput.focus(), 100);
     });
     
-    // Only add security listener if host
+    // SECURITY BUTTON - Only add listener if it exists (Host only)
+    securityBtn = document.getElementById('security-btn');
     if (securityBtn) {
         securityBtn.addEventListener('click', () => {
-          if (isHost) {
-            togglePanel(securityPanel);
-          } else {
-            showToast('Security options are only available to the host');
-          }
+             // Redundant check, but safe
+             if (isHost) togglePanel(document.getElementById('security-panel'));
         });
     }
     
@@ -179,71 +168,76 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.close-panel').forEach(btn => {
       btn.addEventListener('click', () => {
         const panelId = btn.getAttribute('data-panel');
-        document.getElementById(panelId).classList.remove('active');
+        const p = document.getElementById(panelId);
+        if(p) p.classList.remove('active');
       });
     });
 
-    // Chat Send Logic
+    // Chat
     sendMsgBtn.addEventListener('click', sendChatMessage);
     chatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendChatMessage();
     });
     
-    // Security options
-    document.getElementById('waiting-room-toggle').addEventListener('change', (e) => {
-      waitingRoomEnabled = e.target.checked;
-      showToast(`Waiting room ${waitingRoomEnabled ? 'enabled' : 'disabled'}`);
-    });
-    
-    document.getElementById('lock-meeting-toggle').addEventListener('change', (e) => {
-      meetingLocked = e.target.checked;
-      showToast(`Meeting ${meetingLocked ? 'locked' : 'unlocked'}`);
-    });
-    
-    // Authentication modal buttons
-    document.getElementById('admit-entry').addEventListener('click', () => {
-      admitParticipant();
-    });
-    
-    document.getElementById('deny-entry').addEventListener('click', () => {
-      denyParticipant();
-    });
+    // Host Security Options
+    if(isHost) {
+        document.getElementById('waiting-room-toggle').addEventListener('change', (e) => {
+            waitingRoomEnabled = e.target.checked;
+            showToast(`Waiting room ${waitingRoomEnabled ? 'enabled' : 'disabled'}`);
+        });
+        
+        document.getElementById('lock-meeting-toggle').addEventListener('change', (e) => {
+            meetingLocked = e.target.checked;
+            showToast(`Meeting ${meetingLocked ? 'locked' : 'unlocked'}`);
+        });
+        
+        document.getElementById('admit-entry').addEventListener('click', admitParticipant);
+        document.getElementById('deny-entry').addEventListener('click', denyParticipant);
+    }
   }
 
-  // --- STATE SYNC FUNCTIONS (NEW) ---
+  // --- STATE SYNC & CONTROL ---
 
-  // Send state update to others
+  // Host sends this to force a client's state
+  function sendForceState(participantId, type, enabled) {
+      const p = participants[participantId];
+      if (p && p.conn) {
+          p.conn.send({
+              type: 'force-state',
+              subType: type,
+              enabled: enabled
+          });
+      }
+  }
+
+  // Everyone sends this when their state changes manually
   function broadcastStateChange(type, isEnabled) {
     const data = {
         type: 'state-update',
         participantId: peer.id,
-        subType: type, // 'audio' or 'video'
+        subType: type,
         status: isEnabled
     };
 
     if (isHost) {
-        // Host broadcasts to all
         broadcastMessage(data); 
     } else {
-        // Client sends to Host (Host will broadcast)
         if (peer.connections[meetingData.hostPeerId]) {
             const conns = peer.connections[meetingData.hostPeerId];
-            if(conns && conns.length > 0) {
-                conns[0].send(data);
-            }
+            if(conns && conns.length > 0) conns[0].send(data);
         }
     }
   }
 
-  // Handle incoming state updates
   function handleStateUpdate(data) {
-    // 1. Update the UI for this participant
     updateStatusIcon(data.participantId, data.subType, data.status);
     
-    // 2. If Host, relay to everyone else so they also update
-    if (isHost) {
-        broadcastMessage(data, data.participantId); // Don't send back to sender
+    // If Host receives update, update the "Mute/Unmute" button text/icon in Security tab
+    if (isHost && data.subType === 'audio') {
+        updateSecurityTabButton(data.participantId, data.status);
     }
+
+    if (isHost) broadcastMessage(data, data.participantId);
   }
 
   // --- CHAT FUNCTIONS ---
@@ -266,12 +260,9 @@ document.addEventListener('DOMContentLoaded', function() {
       } else {
           if (peer.connections[meetingData.hostPeerId]) {
              const conns = peer.connections[meetingData.hostPeerId];
-             if(conns && conns.length > 0) {
-                 conns[0].send(messageData);
-             }
+             if(conns && conns.length > 0) conns[0].send(messageData);
           }
       }
-
       chatInput.value = '';
   }
 
@@ -294,7 +285,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
   }
 
-  // Host function to send data to all participants
   function broadcastMessage(data, excludePeerId = null) {
       Object.values(participants).forEach(p => {
           if (p.conn && p.conn.open && p.id !== excludePeerId) {
@@ -303,66 +293,50 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
   
-  // Update UI based on host status
+  // Update UI permissions
   function updateHostUI() {
     if (!isHost) {
-      // STRICTLY Hide security button for participants
-      if(securityBtn) {
-          securityBtn.style.display = 'none';
-          securityBtn.remove(); // Completely remove from DOM to be safe
+      // 1. COMPLETELY REMOVE Security Button & Panel for Participants
+      const secBtn = document.getElementById('security-btn');
+      if (secBtn) secBtn.remove();
+      
+      const secPanel = document.getElementById('security-panel');
+      if (secPanel) secPanel.remove();
+      
+      // 2. Hide Mic Button (Participants can't mute themselves)
+      const micBtn = document.getElementById('mic-btn');
+      if (micBtn) {
+          micBtn.style.display = 'none'; // Hide it
       }
       
-      // Update host video label
       document.querySelector('.host-video .participant-name').textContent = meetingData.username;
-      
-      // Disable mute button for participants (Optional: kept based on your original logic)
-      // If you want participants to mute themselves, remove the disabled attribute lines below
-      // document.getElementById('mic-btn').disabled = true;
-      // document.getElementById('mic-btn').style.opacity = '0.5';
     }
   }
   
-  // Start listening for connections (host only)
   function startListeningForConnections() {
     if (!isHost) return;
-    console.log('Host is listening for connections...');
+    console.log('Host listening...');
   }
   
-  // Connect to host (participant only)
   function connectToHost() {
     if (isHost) return;
-    
     try {
       const conn = peer.connect(meetingData.hostPeerId);
-      
       conn.on('open', function() {
-        console.log('Connected to host:', meetingData.hostPeerId);
-        
-        // Send join request to host with INITIAL STATE
         conn.send({
           type: 'join-request',
           participantId: peer.id,
           username: meetingData.username,
-          ip: meetingData.hostIP,
-          initialState: localState // Send state immediately
+          ip: meetingData.hostIP, // Sending own IP to host
+          initialState: localState
         });
       });
-      
-      conn.on('data', function(data) {
-        handleHostMessage(data);
-      });
-      
-      conn.on('error', function(err) {
-        console.error('Connection error:', err);
-        showToast('Failed to connect to host');
-      });
+      conn.on('data', handleHostMessage);
     } catch (error) {
-      console.error('Error connecting to host:', error);
-      showToast('Failed to connect to host');
+      console.error(error);
     }
   }
   
-  // Handle incoming connection (host only)
   function handleIncomingConnection(conn) {
     if (!isHost) return;
     
@@ -376,11 +350,9 @@ document.addEventListener('DOMContentLoaded', function() {
           initialState: data.initialState || { audio: true, video: true }
         };
         
-        if (waitingRoomEnabled) {
-          showAuthModal(data);
-        } else {
-          admitParticipantById(conn.peer);
-        }
+        if (waitingRoomEnabled) showAuthModal(data);
+        else admitParticipantById(conn.peer);
+
       } else if (data.type === 'chat') {
           addMessageToChat(data, false);
           broadcastMessage(data, conn.peer);
@@ -390,12 +362,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // Handle incoming call
   function handleIncomingCall(call) {
     call.answer(localStream);
     
     call.on('stream', function(remoteStream) {
-      // Determine name - if we are host, look up pending/participants, else it's Host
       let name = 'Participant';
       let initialState = { audio: true, video: true };
 
@@ -406,10 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
           }
       } else {
           name = 'Host'; 
-          // Note: Host initial state syncing is harder without a handshake, 
-          // assume true until an update comes or modify handshake.
       }
-
       addVideoToGrid(call.peer, remoteStream, name, initialState);
     });
     
@@ -418,7 +385,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // Handle messages from host (participant only)
   function handleHostMessage(data) {
     if (isHost) return;
     
@@ -429,21 +395,27 @@ document.addEventListener('DOMContentLoaded', function() {
         break;
       case 'denied':
         showToast('Your request to join was denied');
-        setTimeout(() => { window.location.href = 'index.html'; }, 2000);
+        setTimeout(() => window.location.href = 'index.html', 2000);
         break;
-      case 'mute':
-        if (localStream) {
-          localStream.getAudioTracks().forEach(track => track.enabled = false);
-          updateMicButton(false);
-          updateStatusIcon('host', 'audio', false);
-          localState.audio = false; // Update local state tracker
-          broadcastStateChange('audio', false); // Notify others
-          showToast('You have been muted by the host');
+      case 'force-state':
+        // Host controlling our mic
+        if (data.subType === 'audio') {
+            if (localStream) {
+                localStream.getAudioTracks().forEach(t => t.enabled = data.enabled);
+                localState.audio = data.enabled;
+                // Update local icon (even if button is hidden)
+                updateStatusIcon('host', 'audio', data.enabled);
+                // Notify everyone else
+                broadcastStateChange('audio', data.enabled);
+                
+                const statusMsg = data.enabled ? 'unmuted' : 'muted';
+                showToast(`You have been ${statusMsg} by the host`);
+            }
         }
         break;
       case 'kicked':
         showToast('You have been removed from the meeting');
-        setTimeout(() => { window.location.href = 'index.html'; }, 2000);
+        setTimeout(() => window.location.href = 'index.html', 2000);
         break;
       case 'chat':
         addMessageToChat(data, false);
@@ -454,23 +426,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Call host to establish media connection
   function callHost() {
     if (isHost) return;
-    
-    try {
-      const call = peer.call(meetingData.hostPeerId, localStream);
-      
-      call.on('stream', function(remoteStream) {
-        addVideoToGrid(meetingData.hostPeerId, remoteStream, 'Host');
-      });
-      
-      call.on('close', function() {
-        removeVideoFromGrid(meetingData.hostPeerId);
-      });
-    } catch (error) {
-      console.error('Error calling host:', error);
-    }
+    const call = peer.call(meetingData.hostPeerId, localStream);
+    call.on('stream', (remoteStream) => addVideoToGrid(meetingData.hostPeerId, remoteStream, 'Host'));
+    call.on('close', () => removeVideoFromGrid(meetingData.hostPeerId));
   }
   
   function showAuthModal(participantData) {
@@ -481,14 +441,13 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   function admitParticipant() {
-    const participantId = authModal.dataset.participantId;
-    admitParticipantById(participantId);
+    const pId = authModal.dataset.participantId;
+    admitParticipantById(pId);
     authModal.classList.remove('active');
   }
   
   function admitParticipantById(participantId) {
     if (!pendingParticipants[participantId]) return;
-    
     const { conn, username, ip, initialState } = pendingParticipants[participantId];
     
     conn.send({ type: 'admitted' });
@@ -508,13 +467,11 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   function denyParticipant() {
-    const participantId = authModal.dataset.participantId;
-    if (pendingParticipants[participantId]) {
-      const { conn, username } = pendingParticipants[participantId];
-      conn.send({ type: 'denied' });
-      conn.close();
-      delete pendingParticipants[participantId];
-      showToast(`${username} was denied entry`);
+    const pId = authModal.dataset.participantId;
+    if (pendingParticipants[pId]) {
+      pendingParticipants[pId].conn.send({ type: 'denied' });
+      pendingParticipants[pId].conn.close();
+      delete pendingParticipants[pId];
     }
     authModal.classList.remove('active');
   }
@@ -524,33 +481,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const securityParticipantsList = document.getElementById('security-participants-list');
     
     participantsList.innerHTML = '';
-    securityParticipantsList.innerHTML = '';
+    if(securityParticipantsList) securityParticipantsList.innerHTML = '';
     
-    const hostItem = createParticipantItem({
-      id: peer.id,
-      username: isHost ? 'You (Host)' : meetingData.username,
-      ip: meetingData.hostIP,
-      isHost: true
-    });
-    
-    participantsList.appendChild(hostItem);
-    
-    if (isHost) {
-      securityParticipantsList.appendChild(hostItem.cloneNode(true));
-    }
+    // NOTE: We do NOT add the Host to the lists based on request.
     
     Object.values(participants).forEach(participant => {
-      const participantItem = createParticipantItem(participant);
+      // 1. Add to General Participants List (Visible to all)
+      // They see: Avatar, Name, IP
+      const participantItem = createParticipantItem(participant, false);
       participantsList.appendChild(participantItem);
       
-      if (isHost) {
+      // 2. Add to Security List (Host only) - Includes Management Controls
+      if (isHost && securityParticipantsList) {
         const securityItem = createParticipantItem(participant, true);
         securityParticipantsList.appendChild(securityItem);
       }
     });
   }
   
-  function createParticipantItem(participant, showActions = false) {
+  function createParticipantItem(participant, isSecurityTab = false) {
     const item = document.createElement('div');
     item.className = 'participant-item';
     item.dataset.participantId = participant.id;
@@ -569,7 +518,8 @@ document.addEventListener('DOMContentLoaded', function() {
     leftDiv.appendChild(avatar);
     leftDiv.appendChild(name);
     
-    if (isHost && participant.ip) {
+    // Show IP for everyone in the list (Educational purposes)
+    if (participant.ip) {
       const ip = document.createElement('div');
       ip.className = 'participant-ip';
       ip.textContent = `IP: ${participant.ip}`;
@@ -579,23 +529,40 @@ document.addEventListener('DOMContentLoaded', function() {
       leftDiv.appendChild(ip);
     }
     
-    if (showActions && isHost && !participant.isHost) {
+    item.appendChild(leftDiv);
+    
+    // Add CONTROLS only if this is the Security Tab (Host management)
+    if (isSecurityTab && isHost) {
       const rightDiv = document.createElement('div');
       rightDiv.className = 'participant-item-right';
       
-      const muteBtn = document.createElement('button');
-      muteBtn.className = 'participant-action-btn';
-      muteBtn.innerHTML = '<i class="fas fa-microphone-slash"></i>';
-      muteBtn.title = 'Mute';
-      muteBtn.addEventListener('click', () => muteParticipant(participant.id));
+      // Mute/Unmute Button (Toggle)
+      const micBtn = document.createElement('button');
+      micBtn.className = 'participant-action-btn';
+      micBtn.id = `sec-mic-${participant.id}`;
       
+      // Set initial icon based on state
+      const isMuted = participant.initialState && !participant.initialState.audio;
+      micBtn.innerHTML = isMuted ? '<i class="fas fa-microphone-slash" style="color:red"></i>' : '<i class="fas fa-microphone"></i>';
+      micBtn.title = isMuted ? 'Unmute' : 'Mute';
+      
+      micBtn.addEventListener('click', () => {
+         // Check current visual state to determine action
+         const currentIcon = micBtn.querySelector('i').classList.contains('fa-microphone-slash');
+         // If currently slash (muted), we want to UNMUTE (enable=true).
+         // If currently mic (unmuted), we want to MUTE (enable=false).
+         const newState = currentIcon; // true = enable audio
+         toggleParticipantMute(participant.id, newState);
+      });
+      
+      // Kick button
       const kickBtn = document.createElement('button');
       kickBtn.className = 'participant-action-btn danger';
       kickBtn.innerHTML = '<i class="fas fa-user-times"></i>';
       kickBtn.title = 'Remove';
       kickBtn.addEventListener('click', () => kickParticipant(participant.id));
       
-      rightDiv.appendChild(muteBtn);
+      rightDiv.appendChild(micBtn);
       rightDiv.appendChild(kickBtn);
       item.appendChild(rightDiv);
     }
@@ -603,28 +570,45 @@ document.addEventListener('DOMContentLoaded', function() {
     return item;
   }
   
-  function muteParticipant(participantId) {
+  // Update the button in security tab when state changes
+  function updateSecurityTabButton(participantId, isAudioEnabled) {
+      const btn = document.getElementById(`sec-mic-${participantId}`);
+      if(btn) {
+          if(isAudioEnabled) {
+             btn.innerHTML = '<i class="fas fa-microphone"></i>';
+             btn.title = 'Mute';
+          } else {
+             btn.innerHTML = '<i class="fas fa-microphone-slash" style="color:red"></i>';
+             btn.title = 'Unmute';
+          }
+      }
+  }
+
+  function toggleParticipantMute(participantId, enableAudio) {
     if (!isHost) return;
     const participant = participants[participantId];
     if (!participant) return;
-    participant.conn.send({ type: 'mute' });
-    participant.muted = true;
-    showToast(`${participant.username} has been muted`);
+    
+    // Send force command
+    sendForceState(participantId, 'audio', enableAudio);
+    
+    // Update local UI immediately (optimistic)
+    updateSecurityTabButton(participantId, enableAudio);
   }
   
   function kickParticipant(participantId) {
     if (!isHost) return;
     const participant = participants[participantId];
     if (!participant) return;
+    
     participant.conn.send({ type: 'kicked' });
     participant.conn.close();
     delete participants[participantId];
     updateParticipantsList();
     removeVideoFromGrid(participantId);
-    showToast(`${participant.username} has been removed from the meeting`);
+    showToast(`${participant.username} has been removed`);
   }
   
-  // Add video to grid
   function addVideoToGrid(participantId, stream, name = '', initialState = null) {
     let videoContainer = document.getElementById(`video-${participantId}`);
     
@@ -654,95 +638,77 @@ document.addEventListener('DOMContentLoaded', function() {
       
       videoInfo.appendChild(participantName);
       videoInfo.appendChild(participantStatus);
-      
       videoContainer.appendChild(video);
       videoContainer.appendChild(videoInfo);
-      
       videoGrid.appendChild(videoContainer);
     }
     
     const video = document.getElementById(`video-stream-${participantId}`);
-    if (video) {
-      video.srcObject = stream;
-    }
+    if (video) video.srcObject = stream;
 
-    // Apply initial state if provided
     if (initialState) {
         updateStatusIcon(participantId, 'audio', initialState.audio);
         updateStatusIcon(participantId, 'video', initialState.video);
+        // Also update Security Tab if exists
+        updateSecurityTabButton(participantId, initialState.audio);
     }
   }
   
   function removeVideoFromGrid(participantId) {
-    const videoContainer = document.getElementById(`video-${participantId}`);
-    if (videoContainer) {
-      videoContainer.remove();
-    }
+    const v = document.getElementById(`video-${participantId}`);
+    if (v) v.remove();
   }
   
-  // Toggle microphone
   function toggleMicrophone() {
     if (!localStream) return;
-    
-    // Allow everyone to mute/unmute themselves now
-    const audioTracks = localStream.getAudioTracks();
-    if (audioTracks.length > 0) {
-      const enabled = !audioTracks[0].enabled;
-      audioTracks[0].enabled = enabled;
+    // Only works for Host now as Client button is hidden
+    const tracks = localStream.getAudioTracks();
+    if (tracks.length > 0) {
+      const enabled = !tracks[0].enabled;
+      tracks[0].enabled = enabled;
       localState.audio = enabled;
       
-      updateMicButton(enabled);
+      const micBtn = document.getElementById('mic-btn');
+      const icon = micBtn.querySelector('i');
+      if (enabled) {
+        icon.className = 'fas fa-microphone';
+        micBtn.classList.remove('active');
+      } else {
+        icon.className = 'fas fa-microphone-slash';
+        micBtn.classList.add('active');
+      }
+      
       updateStatusIcon('host', 'audio', enabled);
-      broadcastStateChange('audio', enabled); // Broadcast change
+      broadcastStateChange('audio', enabled);
     }
   }
   
-  // Update microphone button
-  function updateMicButton(enabled) {
-    const micBtn = document.getElementById('mic-btn');
-    const icon = micBtn.querySelector('i');
-    if (enabled) {
-      icon.className = 'fas fa-microphone';
-      micBtn.classList.remove('active');
-    } else {
-      icon.className = 'fas fa-microphone-slash';
-      micBtn.classList.add('active');
-    }
-  }
-  
-  // Toggle video
   function toggleVideo() {
     if (!localStream) return;
-    
-    const videoTracks = localStream.getVideoTracks();
-    if (videoTracks.length > 0) {
-      const enabled = !videoTracks[0].enabled;
-      videoTracks[0].enabled = enabled;
+    const tracks = localStream.getVideoTracks();
+    if (tracks.length > 0) {
+      const enabled = !tracks[0].enabled;
+      tracks[0].enabled = enabled;
       localState.video = enabled;
 
-      updateVideoButton(enabled);
+      const videoBtn = document.getElementById('video-btn');
+      const icon = videoBtn.querySelector('i');
+      if (enabled) {
+        icon.className = 'fas fa-video';
+        videoBtn.classList.remove('active');
+      } else {
+        icon.className = 'fas fa-video-slash';
+        videoBtn.classList.add('active');
+      }
+
       updateStatusIcon('host', 'video', enabled);
-      broadcastStateChange('video', enabled); // Broadcast change
-    }
-  }
-  
-  function updateVideoButton(enabled) {
-    const videoBtn = document.getElementById('video-btn');
-    const icon = videoBtn.querySelector('i');
-    if (enabled) {
-      icon.className = 'fas fa-video';
-      videoBtn.classList.remove('active');
-    } else {
-      icon.className = 'fas fa-video-slash';
-      videoBtn.classList.add('active');
+      broadcastStateChange('video', enabled);
     }
   }
 
-  // Helper to update specific icon for any participant
   function updateStatusIcon(participantId, type, isEnabled) {
     const containerId = participantId === 'host' ? 'host-video-container' : `video-${participantId}`;
     const container = document.getElementById(containerId);
-    
     if (!container) return;
   
     const statusContainer = container.querySelector('.participant-status');
@@ -763,39 +729,28 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  function toggleScreenShare() {
-    showToast('Screen sharing is not yet implemented');
-  }
-  
   function leaveMeeting() {
-    if (confirm('Are you sure you want to leave the meeting?')) {
-      if (peer && !peer.destroyed) {
-        peer.destroy();
-      }
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-      }
+    if (confirm('Are you sure you want to leave?')) {
+      if (peer && !peer.destroyed) peer.destroy();
+      if (localStream) localStream.getTracks().forEach(t => t.stop());
       localStorage.removeItem('meetingData');
       window.location.href = 'index.html';
     }
   }
   
   function togglePanel(panel) {
+    if(!panel) return;
     document.querySelectorAll('.side-panel').forEach(p => {
-      if (p !== panel) {
-        p.classList.remove('active');
-      }
+      if (p !== panel) p.classList.remove('active');
     });
     panel.classList.toggle('active');
   }
   
   function showToast(message) {
-    const toastMessage = document.getElementById('toast-message');
-    toastMessage.textContent = message;
-    toast.classList.add('show');
-    setTimeout(() => {
-      toast.classList.remove('show');
-    }, 3000);
+    const t = document.getElementById('toast');
+    document.getElementById('toast-message').textContent = message;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
   }
   
   initMeeting();
