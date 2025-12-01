@@ -235,6 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const wrapper = document.createElement('div');
       wrapper.className = `message-wrapper ${isSelf ? 'self' : 'other'}`;
       
+      // FIXED: Always include the sender name, even for self
       let html = `<div class="message-sender">${data.sender}</div>`;
       
       html += `
@@ -395,16 +396,6 @@ document.addEventListener('DOMContentLoaded', function() {
           showToast('You have been muted by the host');
         }
         break;
-      // --- NEW CASE FOR UNMUTE ---
-      case 'unmute':
-        // Unmute participant
-        if (localStream) {
-          localStream.getAudioTracks().forEach(track => track.enabled = true);
-          updateMicButton(true);
-          updateStatusIcon('host', 'audio', true); // Update local icon too
-          showToast('You have been unmuted by the host');
-        }
-        break;
       case 'kicked':
         showToast('You have been removed from the meeting');
         setTimeout(() => {
@@ -563,6 +554,8 @@ document.addEventListener('DOMContentLoaded', function() {
     leftDiv.appendChild(avatar);
     leftDiv.appendChild(name);
     
+    item.appendChild(leftDiv);
+    
     // Add IP for host view
     if (isHost && participant.ip) {
       const ip = document.createElement('div');
@@ -579,24 +572,12 @@ document.addEventListener('DOMContentLoaded', function() {
       const rightDiv = document.createElement('div');
       rightDiv.className = 'participant-item-right';
       
-      // --- UPDATED MUTE BUTTON LOGIC ---
+      // Mute button
       const muteBtn = document.createElement('button');
       muteBtn.className = 'participant-action-btn';
-      
-      // Check if participant is already muted to set correct icon
-      if (participant.muted) {
-        // If muted, show un-muted mic icon (or color it red/danger)
-        muteBtn.innerHTML = '<i class="fas fa-microphone"></i>';
-        muteBtn.title = 'Unmute';
-        muteBtn.classList.add('danger'); // Visual cue: it's in a "muted" state
-      } else {
-        // If unmuted, show slash icon to mute them
-        muteBtn.innerHTML = '<i class="fas fa-microphone-slash"></i>';
-        muteBtn.title = 'Mute';
-      }
-      
-      // Use the new toggle function
-      muteBtn.addEventListener('click', () => toggleMuteParticipant(participant.id));
+      muteBtn.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+      muteBtn.title = 'Mute';
+      muteBtn.addEventListener('click', () => muteParticipant(participant.id));
       
       // Kick button
       const kickBtn = document.createElement('button');
@@ -613,32 +594,22 @@ document.addEventListener('DOMContentLoaded', function() {
     return item;
   }
   
-  // --- REPLACED muteParticipant WITH toggleMuteParticipant ---
-  // Toggle mute/unmute participant (host only)
-  function toggleMuteParticipant(participantId) {
+  // Mute participant (host only)
+  function muteParticipant(participantId) {
     if (!isHost) return;
     
     const participant = participants[participantId];
     if (!participant) return;
     
-    if (participant.muted) {
-      // Logic for Unmuting
-      participant.conn.send({
-        type: 'unmute'
-      });
-      participant.muted = false;
-      showToast(`${participant.username} has been unmuted`);
-    } else {
-      // Logic for Muting
-      participant.conn.send({
-        type: 'mute'
-      });
-      participant.muted = true;
-      showToast(`${participant.username} has been muted`);
-    }
+    // Send mute command
+    participant.conn.send({
+      type: 'mute'
+    });
     
-    // Refresh the list to update the icon
-    updateParticipantsList();
+    // Update local state
+    participant.muted = true;
+    
+    showToast(`${participant.username} has been muted`);
   }
   
   // Kick participant (host only)
