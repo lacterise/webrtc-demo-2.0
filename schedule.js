@@ -1,4 +1,3 @@
-
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("scheduleForm");
 
@@ -16,8 +15,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const participantVideo = document.getElementById('participantVideo').value;
     const audio = document.getElementById('audio').value;
     
-    // Generate meeting ID (6 digits)
-    const meetingID = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate meeting ID (6 random characters)
+    const meetingID = Math.random().toString(36).substring(2, 8);
     
     // Get the actual IP address of the host device
     const hostIP = await getHostIP();

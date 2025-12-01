@@ -29,7 +29,6 @@
         </button>
       </div>
 
-      <!-- Back button section -->
       <div class="nav-back">
         <button class="btn" onclick="window.location.href='index.html'">← Back to Home</button>
       </div>
@@ -48,8 +47,8 @@
           throw new Error('PeerJS library failed to load');
         }
 
-        // Generate a random peer ID for the meeting
-        meetingID = 'meeting_' + Math.random().toString(36).substr(2, 9);
+        // Generate a random peer ID for the meeting (6 chars)
+        meetingID = Math.random().toString(36).substring(2, 8);
         
         // Initialize PeerJS with the generated ID
         peer = new Peer(meetingID, {
@@ -104,7 +103,8 @@
     }
 
     function fallbackToRandomID() {
-      meetingID = Math.floor(100000 + Math.random() * 900000);
+      // Generate 6 random characters as fallback
+      meetingID = Math.random().toString(36).substring(2, 8);
       document.getElementById('meetingID').value = meetingID;
     }
 
