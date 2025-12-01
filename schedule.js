@@ -1,3 +1,4 @@
+// file: lacterise/webrtc-demo-2.0/webrtc-demo-2.0-488a84ab6504a3abfe5ae6e4fa8212be06dc9680/schedule.js
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("scheduleForm");
 
@@ -15,8 +16,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const participantVideo = document.getElementById('participantVideo').value;
     const audio = document.getElementById('audio').value;
     
-    // Generate meeting ID
-    const meetingID = Math.floor(100000 + Math.random() * 900000);
+    // Generate meeting ID (6 digits)
+    const meetingID = Math.floor(100000 + Math.random() * 900000).toString();
     
     // Get the actual IP address of the host device
     const hostIP = await getHostIP();
@@ -25,6 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem('meetingData', JSON.stringify({
       hostIP: hostIP,
       meetingID: meetingID,
+      peerId: meetingID, // Added this line so the Host uses this ID in meeting-room.js
       username: "Host",
       password: password,
       isHost: true,

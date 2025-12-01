@@ -29,7 +29,6 @@
         </button>
       </div>
 
-      <!-- Back button section -->
       <div class="nav-back">
         <button class="btn" onclick="window.location.href='index.html'">← Back to Home</button>
       </div>
@@ -48,8 +47,8 @@
           throw new Error('PeerJS library failed to load');
         }
 
-        // Generate a random peer ID for the meeting
-        meetingID = 'meeting_' + Math.random().toString(36).substr(2, 9);
+        // Generate a random 6-digit peer ID for the meeting
+        meetingID = Math.floor(100000 + Math.random() * 900000).toString();
         
         // Initialize PeerJS with the generated ID
         peer = new Peer(meetingID, {
@@ -131,7 +130,7 @@
           username: "Host",
           password: password,
           isHost: true,
-          peerId: meetingID
+          peerId: meetingID // Ensure peerId matches the Meeting ID
         };
 
         // Only include peer instance if it exists and is connected
